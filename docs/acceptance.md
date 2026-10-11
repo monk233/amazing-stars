@@ -114,3 +114,37 @@ Impeccable 机械检查因缺少 HTML/CSS 解析模块而降级为正则扫描�
 - Gitee 的集合接口没有总量字段，只能按返回条数推断结束；页数上限 200 页仅用于防止失控循环，超大数据量下的分页稳定性未验证。
 - 未实现把分类写回远端 Lists；远端仍为只读。
 
+## 2026-10-11：分类入口、分类模态框与 Git 设置布局
+
+按浏览器批注调整三处界面：
+
+- 收藏页「新建分类」从分类列表下方的大号虚线按钮改为分类标题行的小号 + 图标按钮；标题、数量与 + 图标统一按行中心对齐。分类行的编辑入口由三点图标改为铅笔图标。所有收藏、分类标题、分类行与未分类共用同一条右对齐数字列与操作图标列；分类列表不再保留常驻滚动条槽位，溢出滚动时行宽会随滚动条变化。
+- 分类编辑由结果上方的内联表单改为居中模态框：打开时聚焦名称输入，Esc 或点击遮罩关闭，Tab 在框内循环，关闭后焦点回到触发按钮。
+- Git 设置改为两张分区卡片：「添加账号」集中令牌表单与多账号说明；「已连接账号」显示数量与账号卡片列表，每个账号独立成卡，凭证移除收进卡片底部并使用两步确认。
+
+验证方式：`pnpm test`（14 个文件、163 项通过）、`pnpm typecheck`、`pnpm build` 通过。使用临时 localhost 夹具加载本轮 `.output/chrome-mv3` 产物并以 mock 消息提供两个 GitHub 账号：收藏页分类标题行显示 + 入口；模态框打开、Esc 关闭、焦点回到入口；Git 页显示「GitHub 2」「已连接账号 2」与两张账号卡片，移除凭证展开两步确认。未使用真实令牌，未修改远端数据；浏览器工具仍拒绝直接访问 `chrome-extension://`，真实扩展页需手动刷新查看。
+
+## 2026-10-11（续）：同步互斥状态与取消按钮
+
+- `useGit` 增加 `pending`（当前在途消息类型）；Git 设置页的「验证并保存」只在 `GIT_CONNECT` 在途时显示「处理中…」，点击同步不再改变其文案。
+- 「取消同步」不再受 `busy` 禁用；分页步进在途时点击会进入既有的排队逻辑，当前步结束后立即发送 `GIT_CANCEL_SYNC`。
+- 回归测试：新增 2 项渲染断言（运行中保持「验证并保存」、取消按钮不带 disabled、`GIT_CONNECT` 在途时才显示「处理中…」），`pnpm test` 14 个文件、165 项通过；`pnpm typecheck`、`pnpm build` 通过。
+- 夹具实测（mock 运行中状态）：同步期间保存按钮文案不变；连续点击取消同步，夹具记录到 `GIT_CANCEL_SYNC` 计数 1、2，确认在途排队路径可达。
+
+## 2026-10-11（续）：AI 模型目录请求的失败诊断与 Key 清洗
+
+现象：Base URL `https://opencode.ai/zen/go/v1` 获取模型目录报「网络请求失败，请检查服务地址、权限和网络；不允许重定向。」
+
+- 服务端实测：本机请求 `GET https://opencode.ai/zen/go/v1/models` 返回 HTTP 200 与 `{data:[...]}` 模型列表；OPTIONS 预检允许 `Authorization` 头；无重定向。故障在浏览器/扩展一侧，不在服务地址本身。
+- `src/ai/service.ts`：`redirect` 从 `'error'` 改为 `'manual'`，重定向、被拦截（opaque / status 0）分别报告；TypeError 现在附带浏览器给出的原因（消息含 Key 时丢弃原因，避免回显凭证）。
+- 保存 API Key 时剔除零宽字符（U+200B–U+200F、U+2060、U+FEFF），避免粘贴带入的不可见字符让浏览器判定请求头非法。
+- 测试：`pnpm test` 14 个文件、167 项通过；`pnpm typecheck`、`pnpm build` 通过。
+- 待真实环境复测：需在 chrome://extensions 重新加载扩展后重试；新的错误文案会指明具体原因（Failed to fetch / 请求被浏览器拦截 / 重定向）。
+
+## 2026-10-11（续）：AI fetch 的 Illegal invocation 修复
+
+真实环境重试后错误变为 `Failed to execute 'fetch' on 'WorkerGlobalScope': Illegal invocation`，根因是 `AiService` 把原生 `fetch` 存为实例属性并以 `this.fetcher(...)` 调用，接收者变成实例；Chrome 对原生函数做 brand check 直接拒绝，而 Node/undici 与 mock 不检查，所以既有单测从未暴露。
+
+- 修复：构造时保存 `(input, init) => fetch(input, init)` 包装，无接收者调用；GitHub/Gitee client 原本就 `const fetcher = this.fetcher; fetcher(...)`，无需改动。
+- 新增回归测试：替换全局 fetch 记录调用接收者，断言不是服务实例。
+- `pnpm test` 14 个文件、168 项通过；`pnpm typecheck`、`pnpm build` 通过；构建产物含包装调用。
