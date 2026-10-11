@@ -11,6 +11,7 @@ const MUTATES_LIBRARY = new Set<GitMessage['type']>(['GIT_CONNECT', 'GIT_DISCONN
 export function useGit() {
   const [state, setState] = useState<GitState | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<GitMessage['type'] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [paused, setPaused] = useState(false);
@@ -23,7 +24,7 @@ export function useGit() {
       if (message.type === 'GIT_CANCEL_SYNC') { queued.current = message; setPaused(true); }
       return false;
     }
-    working.current = true; setBusy(true); setError(''); setPaused(false);
+    working.current = true; setBusy(true); setPending(message.type); setError(''); setPaused(false);
     let ok = true;
     try {
       const reply = await request(message);
@@ -44,6 +45,7 @@ export function useGit() {
       working.current = false;
       if (mounted.current) {
         setBusy(false);
+        setPending(null);
         if (message.type === 'GIT_READ') setLoading(false);
         if (MUTATES_LIBRARY.has(message.type)) setRevision(value => value + 1);
         const next = queued.current; queued.current = null;
@@ -63,6 +65,6 @@ export function useGit() {
   // 分类增删改与账号变化都要让收藏页重新读取本地数据；同步分页不必触发重载。
   const refreshKey = (state?.accounts.map(item => item.account.accountId + ':' + (item.account.lastSyncedAt ?? '')).join('|') ?? '') + '#' + revision;
   const clearError = useCallback(() => setError(''), []);
-  return { state, busy, loading, error, clearError, send, refreshKey };
+  return { state, busy, pending, loading, error, clearError, send, refreshKey };
 }
 export type GitController = ReturnType<typeof useGit>;

@@ -59,7 +59,8 @@ function AccountRule({ item, busy, onSave }: { item: GitAccountState; busy: bool
 }
 
 function ProviderPanel({ git, provider }: { git: GitController; provider: GitProvider }) {
-  const { state, busy, loading, error, clearError, send } = git;
+  const { state, busy, pending, loading, error, clearError, send } = git;
+  const connecting = pending === 'GIT_CONNECT';
   const [token, setToken] = useState('');
   const [remember, setRemember] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -72,77 +73,91 @@ function ProviderPanel({ git, provider }: { git: GitController; provider: GitPro
     void send({ type: 'GIT_CONNECT', provider, token: value, remember });
   };
   return <>
-    <form className="settings-form" onSubmit={event => { event.preventDefault(); submit(); }}>
-      <div className="field">
-        <div className="field-head">
-          <span className="field-label">
-            <label htmlFor={provider + '-access-token'}>{config.tokenLabel}</label>
-            <InfoTip label="连接说明">一个平台可以连接多个账号：每次验证成功都会新增一个账号，各自保存凭证、同步规则与快照。{config.hint}</InfoTip>
-          </span>
-          <a className="field-link" href={config.tokenUrl} target="_blank" rel="noopener noreferrer">{config.tokenLink}<WorkspaceIcon name="external" /></a>
-        </div>
-        <input id={provider + '-access-token'} className="field-input" type="password" value={token} maxLength={1024}
-          autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder={`粘贴 ${config.label} ${config.tokenLabel}`}
-          disabled={busy} onChange={event => { setToken(event.target.value); clearError(); }} />
-      </div>
-      <div className="field">
-        <div className="checkbox-line">
-          <label className="checkbox-row" htmlFor={provider + '-remember'}>
-            <input id={provider + '-remember'} type="checkbox" checked={remember} disabled={busy}
-              onChange={event => setRemember(event.target.checked)} />
-            在此设备记住令牌
-          </label>
-          <InfoTip label="凭证存储说明">勾选后写入本地存储，它不是加密保险箱；不勾选则只在当前浏览器会话有效。令牌只发往 {provider === 'github' ? 'api.github.com' : 'gitee.com'}，不会回填到输入框。</InfoTip>
-        </div>
-      </div>
-      <div className="action-row settings-actions">
-        <button className="button" disabled={busy || !isGitToken(provider, token.trim())} type="submit">{busy ? '处理中…' : '验证并保存'}</button>
-      </div>
-    </form>
-    {error && <p className="inline-error" role="alert">{error}</p>}
-    <fieldset className="settings-fieldset">
-      <legend><span className="legend-row">{config.label} 账号<InfoTip label="同步机制说明">逐个账号同步：一次只推进一个账号的一页数据，读取完成前始终显示原快照。在收藏页左下角切换当前工作账号。</InfoTip></span></legend>
-      {loading && <p className="inline-status" role="status">正在读取 {config.label} 连接状态…</p>}
-      {state && !accounts.length && !loading && <p className="inline-status">还没有连接 {config.label} 账号。</p>}
-      {accounts.map(item => <article className="account" key={item.account.accountId}>
-        <div className="account-head">
-          <span className="account-avatar" aria-hidden="true">{item.account.login.slice(0, 1).toUpperCase()}</span>
-          <h3>{item.account.login}</h3>
-          <span className={'state-badge' + (item.connected ? ' live' : '')}><i aria-hidden="true" />{item.connected ? '已连接' : '未连接'}</span>
-          {item.connected && <span className="state-badge">{item.remember ? '凭证保存在此设备' : '凭证仅在当前会话'}</span>}
-          {item.sync && <span className={'state-badge' + (item.sync.state === 'failed' ? ' warn' : '')}>{STATE_LABEL[item.sync.state] ?? '同步状态未知'}</span>}
-        </div>
-        <dl className="account-facts">
-          <div><dt>上次成功同步</dt><dd>{formatTime(item.account.lastSyncedAt)}</dd></div>
-          <div><dt>本地快照</dt><dd>{item.sync ? `${item.sync.repositories} 个项目${item.sync.mode === 'stars+lists' ? ` · ${item.sync.lists} 个 Lists` : ''}` : '尚无同步记录'}</dd></div>
-        </dl>
-        <AccountRule item={item} busy={busy} onSave={mode => void send({ type: 'GIT_RULE_SAVE', accountId: item.account.accountId, mode })} />
-        {item.sync?.state === 'running' && <SyncProgress sync={item.sync} stages={stagesFor(provider, item.sync.mode)} />}
-        <div className="account-actions">
-          <button className="button" disabled={busy || !item.connected || item.sync?.state === 'running'}
-            onClick={() => void send({ type: 'GIT_SYNC', accountId: item.account.accountId })}>
-            <WorkspaceIcon name="refresh" />{item.sync?.state === 'running' ? '同步中…' : '同步收藏'}
-          </button>
-          {item.sync?.state === 'running' && <button className="button secondary" disabled={busy}
-            onClick={() => void send({ type: 'GIT_CANCEL_SYNC', accountId: item.account.accountId })}>取消同步</button>}
-          {item.sync?.state === 'succeeded' && <span className="inline-status"><WorkspaceIcon name="check" />同步完成，收藏页已更新。</span>}
-          {item.sync?.state === 'cancelled' && <span className="inline-status">同步已取消，原快照保留。</span>}
-        </div>
-        {item.sync?.error && <p className="inline-error" role="alert">{item.sync.error}</p>}
-        <div className="danger-block">
-          <h3>移除此设备凭证</h3>
-          <p>只删除本机保存的令牌并取消未完成的同步；本地快照、分类与标签保留。</p>
-          {confirming === item.account.accountId
-            ? <div className="action-row">
-              <button className="button danger confirming" disabled={busy}
-                onClick={() => { setConfirming(null); void send({ type: 'GIT_DISCONNECT', accountId: item.account.accountId }); }}>确认移除</button>
-              <button className="button secondary" onClick={() => setConfirming(null)}>取消</button>
+    <div className="git-settings">
+      <section className="settings-card" aria-labelledby={'git-connect-' + provider}>
+        <header className="card-head">
+          <h3 id={'git-connect-' + provider}>添加账号</h3>
+          <p>每次验证成功都会新增一个独立账号；同一个平台可以连接多个账号，各自保存凭证、同步规则与本地快照。</p>
+        </header>
+        <form className="settings-form" onSubmit={event => { event.preventDefault(); submit(); }}>
+          <div className="field">
+            <div className="field-head">
+              <span className="field-label">
+                <label htmlFor={provider + '-access-token'}>{config.tokenLabel}</label>
+                <InfoTip label="连接说明">{config.hint}令牌不会回填到输入框，也不会写入项目文件。</InfoTip>
+              </span>
+              <a className="field-link" href={config.tokenUrl} target="_blank" rel="noopener noreferrer">{config.tokenLink}<WorkspaceIcon name="external" /></a>
             </div>
-            : <button className="button danger" disabled={busy}
-              onClick={() => setConfirming(item.account.accountId)}>移除此设备凭证</button>}
+            <input id={provider + '-access-token'} className="field-input" type="password" value={token} maxLength={1024}
+              autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder={`粘贴 ${config.label} ${config.tokenLabel}`}
+              disabled={busy} onChange={event => { setToken(event.target.value); clearError(); }} />
+          </div>
+          <div className="field">
+            <div className="checkbox-line">
+              <label className="checkbox-row" htmlFor={provider + '-remember'}>
+                <input id={provider + '-remember'} type="checkbox" checked={remember} disabled={busy}
+                  onChange={event => setRemember(event.target.checked)} />
+                在此设备记住令牌
+              </label>
+              <InfoTip label="凭证存储说明">勾选后写入本地存储，它不是加密保险箱；不勾选则只在当前浏览器会话有效。令牌只发往 {provider === 'github' ? 'api.github.com' : 'gitee.com'}，不会回填到输入框。</InfoTip>
+            </div>
+          </div>
+          <div className="action-row settings-actions">
+            <button className="button" disabled={busy || !isGitToken(provider, token.trim())} type="submit">{connecting ? '处理中…' : '验证并保存'}</button>
+          </div>
+        </form>
+        {error && <p className="inline-error" role="alert">{error}</p>}
+      </section>
+      <section className="settings-card" aria-labelledby={'git-accounts-' + provider}>
+        <header className="card-head">
+          <div className="card-title-row"><h3 id={'git-accounts-' + provider}>已连接账号</h3><span className="count-chip">{accounts.length}</span></div>
+          <p>逐个账号同步：一次只推进一个账号的一页数据，读取完成前始终显示原快照；在收藏页左下角切换当前工作账号。</p>
+        </header>
+        {loading && <p className="inline-status" role="status">正在读取 {config.label} 连接状态…</p>}
+        {state && !accounts.length && !loading && <p className="inline-status">还没有连接 {config.label} 账号。填写上方令牌即可添加。</p>}
+        <div className="account-list">
+          {accounts.map(item => <article className="account" key={item.account.accountId}>
+            <div className="account-head">
+              <span className="account-avatar" aria-hidden="true">{item.account.login.slice(0, 1).toUpperCase()}</span>
+              <h3>{item.account.login}</h3>
+              <span className={'state-badge' + (item.connected ? ' live' : '')}><i aria-hidden="true" />{item.connected ? '已连接' : '未连接'}</span>
+              {item.connected && <span className="state-badge">{item.remember ? '凭证保存在此设备' : '凭证仅在当前会话'}</span>}
+              {item.sync && <span className={'state-badge' + (item.sync.state === 'failed' ? ' warn' : '')}>{STATE_LABEL[item.sync.state] ?? '同步状态未知'}</span>}
+            </div>
+            <dl className="account-facts">
+              <div><dt>上次成功同步</dt><dd>{formatTime(item.account.lastSyncedAt)}</dd></div>
+              <div><dt>本地快照</dt><dd>{item.sync ? `${item.sync.repositories} 个项目${item.sync.mode === 'stars+lists' ? ` · ${item.sync.lists} 个 Lists` : ''}` : '尚无同步记录'}</dd></div>
+            </dl>
+            <AccountRule item={item} busy={busy} onSave={mode => void send({ type: 'GIT_RULE_SAVE', accountId: item.account.accountId, mode })} />
+            {item.sync?.state === 'running' && <SyncProgress sync={item.sync} stages={stagesFor(provider, item.sync.mode)} />}
+            <div className="account-actions">
+              <button className="button" disabled={busy || !item.connected || item.sync?.state === 'running'}
+                onClick={() => void send({ type: 'GIT_SYNC', accountId: item.account.accountId })}>
+                <WorkspaceIcon name="refresh" />{item.sync?.state === 'running' ? '同步中…' : '同步收藏'}
+              </button>
+              {item.sync?.state === 'running' && <button className="button secondary"
+                onClick={() => void send({ type: 'GIT_CANCEL_SYNC', accountId: item.account.accountId })}>取消同步</button>}
+              {item.sync?.state === 'succeeded' && <span className="inline-status"><WorkspaceIcon name="check" />同步完成，收藏页已更新。</span>}
+              {item.sync?.state === 'cancelled' && <span className="inline-status">同步已取消，原快照保留。</span>}
+            </div>
+            {item.sync?.error && <p className="inline-error" role="alert">{item.sync.error}</p>}
+            <footer className="account-footer">
+              {confirming === item.account.accountId
+                ? <div className="remove-confirm">
+                  <p>只删除本机保存的令牌并取消未完成的同步；本地快照、分类与标签保留。</p>
+                  <div className="action-row">
+                    <button className="button danger confirming" disabled={busy}
+                      onClick={() => { setConfirming(null); void send({ type: 'GIT_DISCONNECT', accountId: item.account.accountId }); }}>确认移除</button>
+                    <button className="button secondary" onClick={() => setConfirming(null)}>取消</button>
+                  </div>
+                </div>
+                : <button type="button" className="remove-credential" disabled={busy}
+                  onClick={() => setConfirming(item.account.accountId)}>移除此设备凭证</button>}
+            </footer>
+          </article>)}
         </div>
-      </article>)}
-    </fieldset>
+      </section>
+    </div>
   </>;
 }
 
@@ -155,6 +170,7 @@ export function GitSettings({ git }: { git: GitController }) {
     else if (event.key === 'ArrowLeft') { event.preventDefault(); select(index - 1); }
   };
   const active = PROVIDERS.find(item => item.id === provider) ?? PROVIDERS[0]!;
+  const accountCount = (id: GitProvider) => git.state?.accounts.filter(item => item.provider === id).length ?? 0;
   return <>
     <header className="settings-panel-head">
       <h2 id="settings-git-title">Git</h2>
@@ -165,7 +181,7 @@ export function GitSettings({ git }: { git: GitController }) {
         {PROVIDERS.map((item, index) => <button key={item.id} type="button" role="tab" id={'git-subtab-' + item.id}
           aria-selected={provider === item.id} aria-controls={'git-subpanel-' + item.id}
           tabIndex={provider === item.id ? 0 : -1}
-          onClick={() => setProvider(item.id)} onKeyDown={event => onKeyDown(event, index)}>{item.label}</button>)}
+          onClick={() => setProvider(item.id)} onKeyDown={event => onKeyDown(event, index)}>{item.label}{accountCount(item.id) > 0 && <span className="tab-count">{accountCount(item.id)}</span>}</button>)}
       </div>
       <div role="tabpanel" id={'git-subpanel-' + active.id} aria-labelledby={'git-subtab-' + active.id}>
         <ProviderPanel git={git} provider={active.id} />

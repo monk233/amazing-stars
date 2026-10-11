@@ -7,7 +7,7 @@ import { Library } from '../../src/ui/Library';
 import type { GitController } from '../../src/ui/use-git';
 
 const controller = (state: GitState | null, patch: Partial<GitController> = {}): GitController => ({
-  state, busy: false, loading: false, error: '', refreshKey: 'render-test', clearError: () => undefined, send: async () => true, ...patch,
+  state, busy: false, pending: null, loading: false, error: '', refreshKey: 'render-test', clearError: () => undefined, send: async () => true, ...patch,
 });
 /** React 在文本插值边界插入注释节点，断言渲染结果前先剥离。 */
 const visible = (html: string) => html.replace(/<!-- -->/g, '');
@@ -16,6 +16,14 @@ const giteeState: GitState = {
   accounts: [{
     account: { id: 'gitee:1', accountId: 'gitee:1', login: 'gitee-user', avatarUrl: '', provider: 'gitee', syncMode: 'stars' },
     provider: 'gitee', syncMode: 'stars', connected: true, remember: false, sync: null,
+  }],
+};
+const runningState: GitState = {
+  kind: 'git',
+  accounts: [{
+    account: { id: 'github:1001', accountId: 'github:1001', login: 'monk233', avatarUrl: '', provider: 'github', syncMode: 'stars+lists' },
+    provider: 'github', syncMode: 'stars+lists', connected: true, remember: true,
+    sync: { state: 'running', phase: 'items', mode: 'stars+lists', repositories: 93, lists: 13, memberships: 83, error: null },
   }],
 };
 
@@ -28,6 +36,8 @@ describe('管理页渲染路径', () => {
     expect(html).toContain('Access Token');
     expect(html).toContain('正在读取 GitHub 连接状态…');
     expect(html).toContain('settings-subtabs');
+    expect(html).toContain('添加账号');
+    expect(html).toContain('已连接账号');
   });
   it('keeps Gitee accounts out of the GitHub panel and reports its fixed rule', () => {
     const html = visible(renderToString(createElement(GitSettings, { git: controller(giteeState) })));
@@ -40,9 +50,20 @@ describe('管理页渲染路径', () => {
       children: createElement(GitSettings, { git: controller(null) }),
     }));
     expect(html).toContain('分类');
-    expect(html).toContain('新建分类');
+    expect(html).toContain('aria-label="新建分类"');
     expect(html).toContain('未分类');
     expect(html).toContain('正在读取本地收藏');
+  });
+  it('keeps the connect label and the cancel button usable while a sync is running', () => {
+    const html = visible(renderToString(createElement(GitSettings, { git: controller(runningState, { busy: true, pending: 'GIT_STEP' }) })));
+    expect(html).toContain('验证并保存');
+    expect(html).not.toContain('处理中…');
+    const cancel = html.match(/<button[^>]*>取消同步<\/button>/)?.[0] ?? '';
+    expect(cancel).not.toContain('disabled');
+  });
+  it('shows the pending label only while a connect request is in flight', () => {
+    const html = visible(renderToString(createElement(GitSettings, { git: controller(giteeState, { busy: true, pending: 'GIT_CONNECT' }) })));
+    expect(html).toContain('处理中…');
   });
   it('renders the settings route with the Git panel mounted', () => {
     const html = renderToString(createElement(Library, {

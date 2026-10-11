@@ -181,26 +181,50 @@
 .manager-workspace .state-badge.warn { border-color: color-mix(in srgb, var(--error) 35%, var(--line)); color: var(--error); }
 .manager-workspace .state-badge.warn i { background: var(--error); }
 
-/* Account entry: every block shares one left edge. */
-.manager-workspace .account { padding: 22px 0 0; border-top: 1px solid var(--line); }
-.manager-workspace .account + .account { margin-top: 26px; }
+/* Git: two labelled cards — connect a new account, then manage the existing ones. */
+.manager-workspace .git-settings { display: grid; gap: 26px; }
+.manager-workspace .settings-card {
+  display: grid; gap: 20px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper);
+}
+.manager-workspace .card-head h3 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.manager-workspace .card-head > p { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.75; max-width: 64ch; }
+.manager-workspace .card-title-row { display: flex; align-items: center; gap: 9px; }
+.manager-workspace .card-title-row h3 { margin: 0; }
+.manager-workspace .count-chip {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 7px;
+  border-radius: 999px; background: var(--soft); color: var(--ink); font-size: 11px; font-variant-numeric: tabular-nums;
+}
+.manager-workspace .settings-subtabs .tab-count { margin-left: 4px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.manager-workspace .settings-subtabs button[aria-selected="true"] .tab-count { color: var(--accent); }
+.manager-workspace .settings-card .field + .field { margin-top: 18px; }
+.manager-workspace .settings-card .settings-actions { margin-top: 20px; }
+.manager-workspace .account-list { display: grid; gap: 16px; }
+.manager-workspace .account { padding: 18px 20px; border: 1px solid var(--line); border-radius: 9px; background: var(--ground); }
 .manager-workspace .account-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .manager-workspace .account-head h3 { margin: 0 4px 0 0; font-size: 16px; font-weight: 600; letter-spacing: -.02em; }
 .manager-workspace .account-avatar {
   display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px;
-  border: 1px solid var(--line); background: var(--ground); color: var(--muted);
+  border: 1px solid var(--line); background: var(--paper); color: var(--muted);
   font-family: var(--display); font-size: 15px;
 }
 .manager-workspace .account-facts {
   display: grid; grid-template-columns: repeat(2, max-content); justify-content: start;
-  gap: 16px 56px; margin: 18px 0 0; padding: 0;
+  gap: 16px 56px; margin: 16px 0 0; padding: 0;
 }
 .manager-workspace .account-facts div { display: grid; gap: 5px; min-width: 0; }
 .manager-workspace .account-facts dt { color: var(--muted); font-size: 11px; }
 .manager-workspace .account-facts dd { margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.manager-workspace .account-actions { margin-top: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.manager-workspace .account-actions { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .manager-workspace .account-actions .button { min-height: 40px; }
 .manager-workspace .account > .inline-error { margin-top: 14px; }
+.manager-workspace .account-footer { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.manager-workspace .remove-credential {
+  padding: 0; border: 0; background: transparent; color: var(--error); font-size: 12px; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.manager-workspace .remove-credential:hover:not(:disabled) { text-decoration-thickness: 2px; }
+.manager-workspace .remove-confirm { display: grid; gap: 12px; }
+.manager-workspace .remove-confirm p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.75; }
 
 /* Sync progress: four named stages, the current one carries the weight. */
 .manager-workspace .sync-progress { margin-top: 20px; }
@@ -214,15 +238,7 @@
 .manager-workspace .sync-stages b { font-family: var(--display); font-size: 10px; letter-spacing: .08em; }
 .manager-workspace .sync-counts { margin: 0; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 
-/* Destructive actions are separated, width-bound and confirmed. */
-.manager-workspace .danger-block {
-  max-width: 620px; margin-top: 24px; padding: 16px 18px;
-  border: 1px solid color-mix(in srgb, var(--error) 30%, var(--line)); border-radius: 8px;
-  background: color-mix(in srgb, var(--error) 5%, transparent);
-}
-.manager-workspace .danger-block h3 { margin: 0 0 7px; font-size: 13px; font-weight: 600; color: var(--error); }
-.manager-workspace .danger-block p { margin: 0 0 14px; color: var(--muted); font-size: 12px; line-height: 1.75; }
-.manager-workspace .danger-block .action-row { gap: 10px; }
+/* Destructive actions keep the danger styling, but live in the account footer. */
 .manager-workspace .button.danger { border-color: color-mix(in srgb, var(--error) 45%, var(--line)); background: transparent; color: var(--error); }
 .manager-workspace .button.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 12%, transparent); opacity: 1; }
 .manager-workspace .button.danger.confirming { background: var(--error); border-color: var(--error); color: var(--paper); }
@@ -283,5 +299,4 @@
   .manager-workspace .mode-segments { width: 100%; }
   .manager-workspace .mode-segment { padding-inline: 8px; gap: 6px; }
   .manager-workspace .account-facts { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-  .manager-workspace .danger-block { max-width: none; }
 }

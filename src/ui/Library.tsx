@@ -58,6 +58,8 @@ export function Library({ route, children, notice, git }: { git: GitController; 
   const resultsPane = useRef<HTMLDivElement>(null);
   const filterPanel = useRef<HTMLDetailsElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  const categoryDialog = useRef<HTMLDivElement>(null);
+  const categoryNameInput = useRef<HTMLInputElement>(null);
   const savedScroll = useRef(0);
   const fitFilterPanel = () => {
     const panel = filterPanel.current;
@@ -80,6 +82,24 @@ export function Library({ route, children, notice, git }: { git: GitController; 
     window.addEventListener('resize', fitFilterPanel);
     return () => { document.removeEventListener('pointerdown', dismiss); document.removeEventListener('keydown', shortcut); window.removeEventListener('resize', fitFilterPanel); };
   }, []);
+  // 分类编辑走模态框：打开后聚焦名称输入，Esc 关闭，Tab 在框内循环。
+  const editorKey = editor ? editor.id ?? '__new' : '';
+  useEffect(() => {
+    if (!editorKey) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    categoryNameInput.current?.focus();
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setConfirming(''); setEditor(null); return; }
+      if (event.key !== 'Tab') return;
+      const items = [...(categoryDialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href]') ?? [])];
+      if (!items.length) return;
+      const first = items[0]!; const last = items[items.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => { document.removeEventListener('keydown', onKeyDown, true); opener?.focus(); };
+  }, [editorKey]);
   useEffect(() => { if (main.current) main.current.scrollTop = 0; }, [route, selected?.id]);
   const generation = useRef(0);
   const account = useRef<string | null>(null);
@@ -138,6 +158,7 @@ export function Library({ route, children, notice, git }: { git: GitController; 
     setEditorBusy(false);
     if (ok) setEditor(null);
   };
+  const closeEditor = () => { setConfirming(''); setEditor(null); };
   const removeCategory = async (categoryId: string) => {
     if (!data?.accountId) return;
     setEditorBusy(true);
@@ -161,9 +182,9 @@ export function Library({ route, children, notice, git }: { git: GitController; 
     <button type="button" aria-pressed={filters.listId === list.id} onClick={() => goLibrary(list.id)}>
       <WorkspaceIcon name="folder" /><span className="category-name" title={list.description || list.name}>{list.name}</span><span className="nav-count">{listCounts.get(list.id)?.size ?? 0}</span>
     </button>
-    <button type="button" className="category-more" aria-label={'管理分类：' + list.name}
+    <button type="button" className="category-more" aria-label={'编辑分类：' + list.name}
       onClick={() => { setConfirming(''); setEditor({ id: list.id, name: list.name, description: list.description ?? '' }); }}>
-      <WorkspaceIcon name="more" />
+      <WorkspaceIcon name="edit" />
     </button>
   </div>;
 
@@ -177,15 +198,15 @@ export function Library({ route, children, notice, git }: { git: GitController; 
         </a>
       </nav>
       <div className="rail-section">
-        <div className="rail-heading"><h2>分类</h2><span>{data?.lists.length ?? 0}</span></div>
+        <div className="rail-heading"><h2>分类</h2><span className="rail-heading-side"><span className="rail-total">{data?.lists.length ?? 0}</span>
+          <button type="button" className="rail-add" aria-label="新建分类" title="新建分类" disabled={!data?.accountId}
+            onClick={() => { setConfirming(''); setEditor({ id: null, name: '', description: '' }); }}>
+            <WorkspaceIcon name="plus" />
+          </button></span></div>
         <div className="rail-list" aria-label="分类列表">
           {data?.lists.map(categoryRow)}
           {!data?.lists.length && <p className="rail-empty">还没有分类。手动新建，或在 Git 设置里选择「同步 Stars 与 Lists」。</p>}
         </div>
-        <button type="button" className="new-category" disabled={!data?.accountId}
-          onClick={() => { setConfirming(''); setEditor({ id: null, name: '', description: '' }); }}>
-          <WorkspaceIcon name="plus" />新建分类
-        </button>
         <div className={'rail-category unlisted-row' + (dropTarget === '__unlisted' ? ' drop-target' : '')} {...dropProps('__unlisted', null)}>
           <button type="button" className="unlisted-link" aria-pressed={filters.listId === '__unlisted'} onClick={() => goLibrary('__unlisted')}>
             <WorkspaceIcon name="repository" /><span>未分类</span><span className="nav-count">{unlistedCount}</span>
@@ -205,34 +226,36 @@ export function Library({ route, children, notice, git }: { git: GitController; 
       {route === 'settings' ? <div className="document-content"><div className="page-title"><div><span className="eyebrow">工作区</span><h1>设置与偏好</h1><p>管理外观、Git 连接、AI 服务与数据边界。</p></div><a className="outline-button" href="#library">返回收藏<WorkspaceIcon name="arrow" /></a></div><div className="workspace-settings">{children}</div></div>
         : isDetail && selected && data ? <div className="document-content"><button className="back-link" onClick={closeDetail}><span aria-hidden="true">←</span> 返回收藏</button><ProjectDetail repo={selected} data={data} onClose={closeDetail} onMove={moveTo} /></div>
           : <section className="library" aria-labelledby="library-title">
-            {editor && <div className="category-editor" role="dialog" aria-modal="false" aria-labelledby="category-editor-title">
-              <div className="category-editor-head">
-                <h2 id="category-editor-title">{editor.id ? '编辑分类' : '新建分类'}</h2>
-                <button type="button" className="icon-button" aria-label="关闭分类编辑" onClick={() => { setEditor(null); setConfirming(''); }}><WorkspaceIcon name="close" /></button>
+            {editor && <div className="dialog-backdrop" onPointerDown={event => { if (event.target === event.currentTarget) closeEditor(); }}>
+              <div className="category-dialog" ref={categoryDialog} role="dialog" aria-modal="true" aria-labelledby="category-editor-title">
+                <div className="dialog-head">
+                  <h2 id="category-editor-title">{editor.id ? '编辑分类' : '新建分类'}</h2>
+                  <button type="button" className="icon-button" aria-label="关闭分类编辑" onClick={closeEditor}><WorkspaceIcon name="close" /></button>
+                </div>
+                <form onSubmit={event => void saveCategory(event)}>
+                  <div className="field">
+                    <div className="field-label"><label htmlFor="category-name">分类名称</label></div>
+                    <input id="category-name" ref={categoryNameInput} className="field-input" maxLength={80} required value={editor.name}
+                      onChange={event => setEditor({ ...editor, name: event.target.value })} />
+                  </div>
+                  <div className="field">
+                    <div className="field-label"><label htmlFor="category-description">分类说明</label></div>
+                    <textarea id="category-description" className="field-input" rows={3} maxLength={500} value={editor.description}
+                      placeholder="记录这个分类的范围、用法或来源" onChange={event => setEditor({ ...editor, description: event.target.value })} />
+                  </div>
+                  <div className="action-row dialog-actions">
+                    <button className="button" type="submit" disabled={editorBusy || !editor.name.trim()}>{editorBusy ? '保存中…' : '保存分类'}</button>
+                    <button className="button secondary" type="button" onClick={closeEditor}>取消</button>
+                    {editor.id && (confirming === editor.id
+                      ? <>
+                        <button className="button danger confirming dialog-delete" type="button" disabled={editorBusy} onClick={() => void removeCategory(editor.id!)}>确认删除</button>
+                        <button className="button secondary" type="button" onClick={() => setConfirming('')}>保留分类</button>
+                      </>
+                      : <button className="button danger dialog-delete" type="button" onClick={() => setConfirming(editor.id!)}>删除分类</button>)}
+                  </div>
+                  <p className="field-help dialog-help">删除分类后，其中的项目会回到「未分类」；项目标签与笔记不受影响。远端同步来的分类下次同步可能重新出现。</p>
+                </form>
               </div>
-              <form onSubmit={event => void saveCategory(event)}>
-                <div className="field">
-                  <div className="field-label"><label htmlFor="category-name">分类名称</label></div>
-                  <input id="category-name" className="field-input" maxLength={80} required value={editor.name}
-                    onChange={event => setEditor({ ...editor, name: event.target.value })} />
-                </div>
-                <div className="field">
-                  <div className="field-label"><label htmlFor="category-description">分类说明</label></div>
-                  <textarea id="category-description" className="field-input" rows={3} maxLength={500} value={editor.description}
-                    placeholder="记录这个分类的范围、用法或来源" onChange={event => setEditor({ ...editor, description: event.target.value })} />
-                </div>
-                <div className="action-row category-editor-actions">
-                  <button className="button" type="submit" disabled={editorBusy || !editor.name.trim()}>{editorBusy ? '保存中…' : '保存分类'}</button>
-                  <button className="button secondary" type="button" onClick={() => { setEditor(null); setConfirming(''); }}>取消</button>
-                  {editor.id && (confirming === editor.id
-                    ? <>
-                      <button className="button danger confirming" type="button" disabled={editorBusy} onClick={() => void removeCategory(editor.id!)}>确认删除</button>
-                      <button className="button secondary" type="button" onClick={() => setConfirming('')}>保留分类</button>
-                    </>
-                    : <button className="button danger" type="button" onClick={() => setConfirming(editor.id!)}>删除分类</button>)}
-                </div>
-                <p className="field-help">删除分类后，其中的项目会回到「未分类」；项目标签与笔记不受影响。远端同步来的分类下次同步可能重新出现。</p>
-              </form>
             </div>}
             <header className="library-header">
               <div className="library-heading"><span className="eyebrow">我的收藏馆</span><div className="title-line"><h1 id="library-title">{categoryName}</h1><span className="collection-count">{data ? results.length : '—'}</span></div>
