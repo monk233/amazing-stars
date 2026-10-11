@@ -24,7 +24,7 @@ describe('本地 HTTP 集成验证（合成 Key，不访问外部服务）', () 
       expect(await service.models(`${origin}/v1`)).toEqual(['local-fixture-model']);
       expect(requests[0]).toEqual({ path: '/v1/models', method: 'GET', authorization: 'Bearer synthetic-integration-key' });
       await service.save({ baseUrl: `${origin}/redirect`, apiKey: 'synthetic-redirect-key', model: '', remember: false });
-      await expect(service.models(`${origin}/redirect`)).rejects.toThrow('不允许重定向');
+      await expect(service.models(`${origin}/redirect`)).rejects.toThrow('重定向');
       expect(requests.map(request => request.path)).toEqual(['/v1/models', '/redirect/models']);
     } finally {
       server.closeAllConnections();

@@ -7,9 +7,12 @@ const MAX_RESPONSE_BYTES = 1_048_576;
 export class AiService {
   private tail: Promise<unknown> = Promise.resolve();
   private vault: CredentialVault;
+  private fetcher: typeof fetch;
   constructor(private local: StorageArea, session: StorageArea,
-    private hasPermission: (origin: string) => Promise<boolean>, private fetcher: typeof fetch = fetch) {
+    private hasPermission: (origin: string) => Promise<boolean>, fetcher?: typeof fetch) {
     this.vault = new CredentialVault(local, session);
+    // 原生 fetch 必须无接收者调用；存成实例属性再 this.fetcher(...) 会让 Chrome 抛 Illegal invocation。
+    this.fetcher = fetcher ?? ((input, init) => fetch(input, init));
   }
   private serialize<T>(operation: () => Promise<T>): Promise<T> {
     const task = this.tail.then(operation);
@@ -42,8 +45,10 @@ export class AiService {
       const baseUrl = normalizeBaseUrl(input.baseUrl);
       const previous = await this.readConfig();
       const id = await this.credentialId(baseUrl);
+      // 粘贴常带入零宽字符；留着会让浏览器判定请求头非法。
+      const pastedKey = input.apiKey.replace(/[\u200b-\u200f\u2060\ufeff]/g, '');
       // 即使旧地址曾经使用过，更换地址时也必须重新明确输入 Key。
-      const secret = input.apiKey.trim() || (previous?.baseUrl === baseUrl ? await this.vault.read(id, 'ai') : null);
+      const secret = pastedKey.trim() || (previous?.baseUrl === baseUrl ? await this.vault.read(id, 'ai') : null);
       if (!secret) throw new AiError('请输入 API Key；更换 Base URL 或浏览器会话结束后需要重新输入。');
       await this.vault.save(id, 'ai', secret, input.remember);
       const config: AiConfig = { baseUrl, model: input.model.trim(), remember: input.remember };
@@ -65,8 +70,13 @@ export class AiService {
       try {
         const response = await this.fetcher(`${config.baseUrl}/models`, {
           method: 'GET', headers: { Authorization: `Bearer ${secret}`, Accept: 'application/json' },
-          credentials: 'omit', redirect: 'error', cache: 'no-store', referrerPolicy: 'no-referrer', signal: controller.signal,
+          credentials: 'omit', redirect: 'manual', cache: 'no-store', referrerPolicy: 'no-referrer', signal: controller.signal,
         });
+        // 浏览器按规范返回 opaqueredirect；Node 的 fetch 直接暴露 3xx 状态，两者都按重定向处理。
+        if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+          throw new AiError('服务返回了重定向，出于安全考虑已停止；请直接填写最终可用的 API 根地址。');
+        }
+        if (response.type === 'opaque' || response.status === 0) throw new AiError('请求被浏览器拦截，请确认已允许该服务的主机权限后重试。');
         if (!response.ok) {
           if (response.body) await response.body.cancel();
           const detail = response.status === 401 || response.status === 403 ? '请检查 API Key 和访问权限。' :
@@ -105,7 +115,11 @@ export class AiService {
         return [...new Set(ids)].sort();
       } catch (error) {
         if (error instanceof AiError) throw error;
-        throw new AiError(controller.signal.aborted ? '请求超时（15 秒），请检查服务后重试。' : '网络请求失败，请检查服务地址、权限和网络；不允许重定向。');
+        if (controller.signal.aborted) throw new AiError('请求超时（15 秒），请检查服务后重试。');
+        // 附带浏览器给出的原因便于排查；消息里若含凭证则丢弃。
+        const raw = error instanceof Error ? error.message.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 160) : '';
+        const reason = raw && !raw.includes(secret) ? `（${raw}）` : '';
+        throw new AiError(`网络请求失败${reason}，请检查服务地址、主机权限和网络。`);
       } finally { clearTimeout(timer); }
     });
   }

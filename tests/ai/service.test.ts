@@ -74,7 +74,7 @@ describe('真实模型目录请求', () => {
     const f = fixture(); await f.service.save(input);
     expect(await f.service.models(baseUrl)).toEqual(['model-a', 'model-b']);
     expect(f.permission).toHaveBeenCalledWith('https://provider.example/*');
-    expect(f.fetcher).toHaveBeenCalledWith(`${baseUrl}/models`, expect.objectContaining({ method: 'GET', credentials: 'omit', redirect: 'error', cache: 'no-store', referrerPolicy: 'no-referrer' }));
+    expect(f.fetcher).toHaveBeenCalledWith(`${baseUrl}/models`, expect.objectContaining({ method: 'GET', credentials: 'omit', redirect: 'manual', cache: 'no-store', referrerPolicy: 'no-referrer' }));
     expect(f.fetcher.mock.calls[0]?.[1]).not.toHaveProperty('body');
   });
   it('does not send any request when permission is denied', async () => {
@@ -100,9 +100,32 @@ describe('真实模型目录请求', () => {
     const f = fixture(vi.fn(async () => new Response('x'.repeat(1_048_577)))); await f.service.save(input);
     await expect(f.service.models(baseUrl)).rejects.toThrow('响应过大');
   });
+  it('calls the global fetch without an instance receiver', async () => {
+    const original = globalThis.fetch;
+    let receiver: unknown = 'unset';
+    globalThis.fetch = function (this: unknown) { receiver = this; return Promise.resolve(Response.json({ data: [] })); } as unknown as typeof fetch;
+    try {
+      const service = new AiService(new MemoryStorage(), new MemoryStorage(), async () => true);
+      await service.save({ ...input, remember: false });
+      expect(await service.models(baseUrl)).toEqual([]);
+      expect(receiver === undefined || receiver === globalThis).toBe(true);
+    } finally { globalThis.fetch = original; }
+  });
+  it('strips zero-width characters from a pasted key before storing and sending it', async () => {
+    const f = fixture(); await f.service.save({ ...input, apiKey: 'key\u200b-with-hidden' });
+    await f.service.models(baseUrl);
+    expect(f.fetcher).toHaveBeenCalledWith(`${baseUrl}/models`, expect.objectContaining({ headers: { Authorization: 'Bearer key-with-hidden', Accept: 'application/json' } }));
+  });
   it('reports network errors without reflecting secrets', async () => {
     const f = fixture(vi.fn(async () => { throw new Error(input.apiKey); })); await f.service.save(input);
-    await expect(f.service.models(baseUrl)).rejects.toThrow('网络请求失败');
+    const error = await f.service.models(baseUrl).then(() => null, (reason: unknown) => reason as Error);
+    expect(error?.message).toContain('网络请求失败'); expect(error?.message).not.toContain(input.apiKey);
+  });
+  it('includes the browser reason when it is safe and flags blocked responses', async () => {
+    const f = fixture(vi.fn(async () => { throw new TypeError('Failed to fetch'); })); await f.service.save(input);
+    await expect(f.service.models(baseUrl)).rejects.toThrow('Failed to fetch');
+    const blocked = fixture(vi.fn(async () => Response.error())); await blocked.service.save(input);
+    await expect(blocked.service.models(baseUrl)).rejects.toThrow('请求被浏览器拦截');
   });
   it('aborts after 15 seconds and releases the operation queue', async () => {
     vi.useFakeTimers();
