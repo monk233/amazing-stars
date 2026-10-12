@@ -302,3 +302,29 @@ Impeccable 机械检查因缺少 HTML/CSS 解析模块而降级为正则扫描�
 - 设置界面字段改为「每批整理数量」，提示写明「数量越大，单次请求越慢、越容易触发超时」。
 
 验证：`pnpm typecheck` 通过；`pnpm test` 18 个文件、226 项通过；`pnpm build` 通过，产物合计 546.52 kB。真实 Chrome 中确认字段默认 30、min 1、max 100；改超时后自动保存生效（后台读到 `timeoutSeconds: 200, batchSize: 30`）；整理配置面板内提交按钮数为 0。
+
+## 2026-10-12（续）：UI 规范审计与修复
+
+按 `docs/design/ui-spec.md` 做了全量审计，范围覆盖代码层（对比度、焦点、死代码、token、断点）与文案命名层（术语、Label、按钮、组件与文件命名），随后逐项修复。
+
+修复内容：
+
+- 颜色来源合并：删除 `.manager-stage` 上的第二套色值，四套主题统一到 `tokens.css` 的 `:root`，采用此前实际生效的一套。
+- 对比度达标：浅色主题 `--muted` 由 `#73756d`/`#697182` 调整为 `#6c6e66`/`#656d7d`。复算后 folio-light 为 4.70（ground）与 4.53（rail），observatory-light 为 4.69 与 4.52，全部达到 4.5:1；此前分别为 4.25 / 4.09 / 4.41。
+- 焦点环：移除 `.settings-panel:focus-visible { outline: none }` 与搜索框输入上的 `outline: none`。
+- 无障碍：三处 `aria-label` 原本挂在没有 role 的 `div` 上（会被忽略），补 `role="group"`；Toast 容器移除与子元素重复的 `aria-live`。
+- 死代码：删除已废弃的 AI 整理对话框与视图样式约 55 行，以及永不匹配的 `.classify-button.is-running`。
+- 字体：`.avatar` 与 `.repo-name` 改用 `var(--display)`，随主题切换。
+- 滚动容器：6 处补 `overscroll-behavior: contain`，现在 9 个滚动容器全部具备。
+- 断点：删除越界的 `@media(max-width:600px)`。
+- Token 变量化：52 处圆角、6 处层级、17 处动效时长、17 处缓动改为 `--radius-*`、`--z-*`、`--motion-*`、`--ease-*`；13 处非阶梯字号归并到规范档位。
+- 硬编码阴影色改为 `color-mix(in srgb, var(--ink) N%, transparent)`。
+- 文案：数据边界页的 AI 请求说明更正（原写「不包含仓库内容」，与 AI 整理的实际发送范围冲突）；筛选清除动作统一为「清除筛选」；凭证术语统一（令牌/凭证混用）；提示词 Label 改为「系统提示词 · 分类准则」与「用户提示词 · 附加要求」；删除私有仓库的重复 Label；外观设置不再常显「已保存」；压缩三处长文案；占位符 `—` 改为 `…`。
+- 命名：`Library` → `WorkspaceShell`、`Toast.tsx` → `ToastStack.tsx`、`use-foundation` → `use-workspace-status`、`prompt.ts` → `preferences.ts`（`PromptStore` → `AiPreferences`）、`ClassificationDraft` → `ClassifyDraft`。
+- 规范同步：§2.1 颜色来源改为 `:root` 唯一来源；§6.2 与 §4.1 的持续动画例外对齐；§10 澄清 `tokens.css` 的全局基础例外；§14 登记设置分区序号的例外；§8 补充「项目」「凭证」「Lists」的用法；§15 移除已修复项并记录剩余四条（焦点管理未统一、缺跳转链接、`WorkspaceShell.tsx` 双组件、CSS 类名边界）。
+
+验证：`pnpm typecheck` 通过；`pnpm test` 18 个文件、226 项通过；`pnpm build` 通过，产物合计 543.70 kB。真实 Chrome 抽查确认收藏页、AI 整理按钮、失败提示条与整理配置面板在 folio-light 与 observatory-dark 两套主题、1440×900 与 390×844 两个尺寸下渲染正常，0 console error、0 异常。
+
+过程中发现并修正一处批量替换缺陷：替换 `ease` 关键字时误伤了 `var(--ease-out)` 内部，产生非法 CSS 并使构建失败，已还原；该问题由 `pnpm build` 捕获。
+
+未执行：没有做屏幕阅读器实测、200% 文字放大的可达性验证，也没有逐页核对四套主题的完整视觉。
