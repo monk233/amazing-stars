@@ -1,4 +1,7 @@
 import type { GitController } from './use-git';
+import type { ClassifyController } from './use-ai';
+import { ToastStack } from './Toast';
+import { useToasts } from './use-toasts';
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import type { List, Repository } from '../data/types';
 import { filterRepositories, initialFilters, repositoryUrl, type Filters, type Library as LibraryData } from '../library/library';
@@ -42,7 +45,7 @@ function ProjectDetail({ repo, data, onClose, onMove }: {
 
 interface Editor { id: string | null; name: string; description: string }
 
-export function Library({ route, children, notice, git }: { git: GitController; route: string; children: ReactNode; notice: ReactNode }) {
+export function Library({ route, children, notice, git, classify }: { git: GitController; classify: ClassifyController; route: string; children: ReactNode; notice: ReactNode }) {
   const [data, setData] = useState<LibraryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -54,6 +57,7 @@ export function Library({ route, children, notice, git }: { git: GitController; 
   const [confirming, setConfirming] = useState('');
   const [dragging, setDragging] = useState('');
   const [dropTarget, setDropTarget] = useState('');
+  const { toasts, push, dismiss } = useToasts();
   const main = useRef<HTMLElement>(null);
   const resultsPane = useRef<HTMLDivElement>(null);
   const filterPanel = useRef<HTMLDetailsElement>(null);
@@ -146,6 +150,15 @@ export function Library({ route, children, notice, git }: { git: GitController; 
   const syncLabel = syncRunning ? '同步中…' : connection?.connected ? '同步收藏' : '连接 Git 账号';
   const providerLabel = connection?.provider === 'gitee' ? 'Gitee' : 'GitHub';
 
+  /** 一次整理跑到底：没有中断入口，失败由服务端结束本轮，结果用提示条反馈。 */
+  const runClassify = async () => {
+    const accountId = data?.accountId;
+    if (!accountId) { push('error', '还没有已连接的账号。先到设置里连接 Git 账号并同步收藏。'); return; }
+    const result = await classify.run(accountId);
+    if (result.ok) push('success', `已整理 ${result.applied} 个项目，新建 ${result.categoriesCreated} 个分类。`);
+    else push('error', result.message);
+    void load(account.current, false);
+  };
   const moveTo = (repositoryId: string, categoryId: string | null) => {
     if (!data?.accountId) return;
     void git.send({ type: 'GIT_CATEGORY_MOVE', accountId: data.accountId, repositoryId, categoryId });
@@ -207,11 +220,12 @@ export function Library({ route, children, notice, git }: { git: GitController; 
           {data?.lists.map(categoryRow)}
           {!data?.lists.length && <p className="rail-empty">还没有分类。手动新建，或在 Git 设置里选择「同步 Stars 与 Lists」。</p>}
         </div>
-        <div className={'rail-category unlisted-row' + (dropTarget === '__unlisted' ? ' drop-target' : '')} {...dropProps('__unlisted', null)}>
+        {/* 没有未分类项目时整行隐藏；正在查看该视图时保留，避免选中态突然消失。 */}
+        {(unlistedCount > 0 || filters.listId === '__unlisted') && <div className={'rail-category unlisted-row' + (dropTarget === '__unlisted' ? ' drop-target' : '')} {...dropProps('__unlisted', null)}>
           <button type="button" className="unlisted-link" aria-pressed={filters.listId === '__unlisted'} onClick={() => goLibrary('__unlisted')}>
             <WorkspaceIcon name="repository" /><span>未分类</span><span className="nav-count">{unlistedCount}</span>
           </button>
-        </div>
+        </div>}
       </div>
       <div className="rail-footer">
         <a className="settings-link" href="#settings" aria-current={route === 'settings' ? 'page' : undefined}><WorkspaceIcon name="settings" />设置与偏好<WorkspaceIcon name="arrow" /></a>
@@ -262,9 +276,16 @@ export function Library({ route, children, notice, git }: { git: GitController; 
                 {selectedCategory?.description && <p className="category-description">{selectedCategory.description}</p>}
                 <p className="sync-caption" role="status">{syncRunning ? '正在同步，当前展示上次快照' : activeAccount?.lastSyncedAt ? '上次同步 ' + formattedDate(activeAccount.lastSyncedAt) : '从 ' + providerLabel + ' 同步你的开源收藏'}</p>
               </div>
-              <button className="button sync-button" disabled={loading || git.busy || syncRunning} onClick={() => {
-                if (connection?.connected) void git.send({ type: 'GIT_SYNC', accountId: connection.account.accountId }); else location.hash = 'settings';
-              }}><WorkspaceIcon name="refresh" />{syncLabel}</button>
+              <div className="library-heading-actions">
+                <button className="button secondary classify-button" disabled={classify.running} onClick={() => void runClassify()}>
+                  {classify.running
+                    ? <><span className="spinner" aria-hidden="true" />整理中 {classify.progress.processed} / {classify.progress.total}</>
+                    : 'AI 整理'}
+                </button>
+                <button className="button sync-button" disabled={loading || git.busy || syncRunning} onClick={() => {
+                  if (connection?.connected) void git.send({ type: 'GIT_SYNC', accountId: connection.account.accountId }); else location.hash = 'settings';
+                }}><WorkspaceIcon name="refresh" />{syncLabel}</button>
+              </div>
             </header>
             <p className="drag-hint">提示：把项目拖到左侧分类即可移动；触屏或键盘可用项目详情里的「移动到分类」。</p>
             <div className="library-controls">
@@ -325,5 +346,6 @@ export function Library({ route, children, notice, git }: { git: GitController; 
             <footer className="library-footer"><span><WorkspaceIcon name="lock" />本地收藏快照</span>{pages > 1 ? <nav className="library-pagination" aria-label="收藏分页"><button className="icon-button" aria-label="上一页" disabled={page === 1} onClick={() => setPage(value => value - 1)}><span aria-hidden="true">←</span></button><span role="status">{page} / {pages}</span><button className="icon-button" aria-label="下一页" disabled={page === pages} onClick={() => setPage(value => value + 1)}><span aria-hidden="true">→</span></button></nav> : <span>{data?.repositories.length ?? 0} 个收藏</span>}</footer>
           </section>}
     </main>
+    <ToastStack toasts={toasts} onDismiss={dismiss} />
   </div></div>;
 }

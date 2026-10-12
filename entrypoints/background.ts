@@ -2,6 +2,7 @@ import { GitService } from '../src/git/service';
 import { GitError, gitMessage } from '../src/git/types';
 import { readLibrary } from '../src/library/library';
 import { AiService } from '../src/ai/service';
+import { ClassifyService } from '../src/ai/classify';
 import { AiError } from '../src/ai/config';
 import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
@@ -14,6 +15,7 @@ export default defineBackground(() => {
   const settings = new SettingsStore(browser.storage.local);
   const ai = new AiService(browser.storage.local, browser.storage.session, origin => browser.permissions.contains({ origins: [origin] }));
   const git = new GitService(browser.storage.local, browser.storage.session);
+  const classify = new ClassifyService(browser.storage.local, ai);
   let ready: Promise<void> | undefined;
   function initialize(): Promise<void> {
     ready ??= (async () => {
@@ -56,6 +58,13 @@ export default defineBackground(() => {
         const models = await ai.models(message.baseUrl);
         return { ok: true, value: message.type === 'AI_MODELS' ? { models } : { modelCount: models.length } };
       }
+      if (message.type === 'AI_PROMPT_READ') return { ok: true, value: await classify.promptRead() };
+      if (message.type === 'AI_PROMPT_SAVE') return { ok: true, value: await classify.promptSave(message) };
+      if (message.type === 'AI_CLASSIFY_CONFIG_READ') return { ok: true, value: await classify.configRead() };
+      if (message.type === 'AI_CLASSIFY_CONFIG_SAVE') return { ok: true, value: await classify.configSave(message) };
+      if (message.type === 'AI_CLASSIFY_START') return { ok: true, value: await classify.start(message.accountId) };
+      if (message.type === 'AI_CLASSIFY_STEP') return { ok: true, value: await classify.step(message.accountId) };
+      if (message.type === 'AI_CLASSIFY_READ') return { ok: true, value: await classify.read(message.accountId) };
       const status: Status = {
         phase: 'github', github: 'access_token', ai: 'configuration',
         settings: await settings.read(), database: 'ready',

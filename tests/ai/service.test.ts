@@ -4,7 +4,7 @@ import { isAiInput, normalizeBaseUrl, permissionOrigin } from '../../src/ai/conf
 import { MemoryStorage } from '../helpers/storage';
 
 const baseUrl = 'https://provider.example/v1';
-const input = { baseUrl, apiKey: 'secret-test-key', model: '', remember: false };
+const input = { baseUrl, apiKey: 'secret-test-key', model: '', remember: false, headers: '' };
 function fixture(fetcher = vi.fn<typeof fetch>(async () => Response.json({ data: [{ id: 'model-b' }, { id: 'model-a' }, { id: 'model-a' }] }))) {
   const local = new MemoryStorage(), session = new MemoryStorage();
   const permission = vi.fn(async () => true);
@@ -151,5 +151,124 @@ describe('真实模型目录请求', () => {
     await pending; await save;
     expect(f.fetcher.mock.calls[0]?.[0]).toBe(`${baseUrl}/models`);
     expect((await f.service.read()).config?.baseUrl).toBe('https://other.example/v1');
+  });
+});
+
+describe('生成请求', () => {
+  const messages = [{ role: 'system' as const, content: '契约' }, { role: 'user' as const, content: '项目清单' }];
+
+  it('posts only the given messages and returns the generated content', async () => {
+    const f = fixture(vi.fn(async () => Response.json({ choices: [{ message: { content: '{"suggestions":[]}' } }] })));
+    await f.service.save({ ...input, model: 'demo-model' });
+    expect(await f.service.chat(messages)).toBe('{"suggestions":[]}');
+    expect(f.fetcher).toHaveBeenCalledWith(`${baseUrl}/chat/completions`, expect.objectContaining({
+      method: 'POST', credentials: 'omit', redirect: 'manual', cache: 'no-store', referrerPolicy: 'no-referrer',
+      headers: { Authorization: `Bearer ${input.apiKey}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+    }));
+    const body = JSON.parse(String((f.fetcher.mock.calls[0]?.[1] as RequestInit).body));
+    expect(body).toMatchObject({ model: 'demo-model', messages, response_format: { type: 'json_object' } });
+  });
+
+  it('refuses to send without a model name or permission', async () => {
+    const f = fixture(); await f.service.save(input);
+    await expect(f.service.chat(messages)).rejects.toThrow('请先填写模型名称');
+    await f.service.save({ ...input, model: 'demo-model' });
+    f.permission.mockResolvedValue(false);
+    await expect(f.service.chat(messages)).rejects.toThrow('尚未授权');
+    expect(f.fetcher).not.toHaveBeenCalled();
+  });
+
+  it('surfaces the service error message for a rejected request', async () => {
+    const f = fixture(vi.fn(async () => new Response(JSON.stringify({ error: { message: 'Unsupported parameter: response_format' } }), { status: 400 })));
+    await f.service.save({ ...input, model: 'demo-model' });
+    const error = await f.service.chat(messages).then(() => null, (reason: unknown) => reason as Error);
+    if (!(error instanceof Error)) throw new Error('预期生成请求失败。');
+    expect(error.message).toContain('HTTP 400');
+    expect(error.message).toContain('Unsupported parameter: response_format');
+  });
+
+  it('never reflects the key, control characters or oversized error text', async () => {
+    const leaking = fixture(vi.fn(async () => new Response(JSON.stringify({ error: { message: `bad key ${input.apiKey}` } }), { status: 400 })));
+    await leaking.service.save({ ...input, model: 'demo-model' });
+    const leak = await leaking.service.chat(messages).then(() => null, (reason: unknown) => reason as Error);
+    if (!(leak instanceof Error)) throw new Error('预期生成请求失败。');
+    expect(leak.message).not.toContain(input.apiKey);
+
+    const noisy = fixture(vi.fn(async () => new Response(JSON.stringify({ error: { message: 'a\u0007'.repeat(400) } }), { status: 422 })));
+    await noisy.service.save({ ...input, model: 'demo-model' });
+    const noisyError = await noisy.service.chat(messages).then(() => null, (reason: unknown) => reason as Error);
+    if (!(noisyError instanceof Error)) throw new Error('预期生成请求失败。');
+    expect(noisyError.message).toContain('HTTP 422');
+    expect(noisyError.message).not.toContain('\u0007');
+    expect(noisyError.message.length).toBeLessThan(600);
+
+    const htmlish = fixture(vi.fn(async () => new Response('<html>bad gateway</html>', { status: 500 })));
+    await htmlish.service.save({ ...input, model: 'demo-model' });
+    await expect(htmlish.service.chat(messages)).rejects.toThrow('HTTP 500');
+  });
+
+  it('rejects empty, malformed and self-referential generation responses', async () => {
+    for (const body of ['not JSON', '{}', JSON.stringify({ choices: [] }), JSON.stringify({ choices: [{ message: { content: '' } }] }), JSON.stringify({ choices: [{ message: { content: input.apiKey } }] })]) {
+      const f = fixture(vi.fn(async () => new Response(body)));
+      await f.service.save({ ...input, model: 'demo-model' });
+      await expect(f.service.chat(messages)).rejects.toThrow();
+    }
+  });
+
+  it('aborts a slow generation after two minutes and keeps the queue usable', async () => {
+    vi.useFakeTimers();
+    try {
+      const f = fixture(vi.fn((_url, options) => new Promise<Response>((_resolve, reject) => {
+        options?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+      })));
+      await f.service.save({ ...input, model: 'demo-model' });
+      const pending = expect(f.service.chat(messages)).rejects.toThrow('请求超时');
+      await vi.waitFor(() => expect(f.fetcher).toHaveBeenCalled());
+      await vi.advanceTimersByTimeAsync(120_001);
+      await pending;
+      expect((await f.service.read()).hasApiKey).toBe(true);
+    } finally { vi.useRealTimers(); }
+  });
+});
+
+describe('自定义请求头', () => {
+  it('sends configured headers on both the catalog and the generation request', async () => {
+    const f = fixture(vi.fn(async () => Response.json({ data: [], choices: [{ message: { content: '{}' } }] })));
+    await f.service.save({ ...input, model: 'demo-model', headers: 'x-opencode-session: session-123' });
+    await f.service.models(baseUrl);
+    expect(f.fetcher.mock.calls[0]?.[1]).toMatchObject({
+      headers: { Authorization: `Bearer ${input.apiKey}`, Accept: 'application/json', 'x-opencode-session': 'session-123' },
+    });
+    await f.service.chat([{ role: 'user', content: 'hi' }]);
+    expect(f.fetcher.mock.calls[1]?.[1]).toMatchObject({
+      headers: { Authorization: `Bearer ${input.apiKey}`, Accept: 'application/json', 'Content-Type': 'application/json', 'x-opencode-session': 'session-123' },
+    });
+  });
+
+  it('rejects protected, malformed, duplicated and oversized headers without saving', async () => {
+    const f = fixture();
+    const invalid = [
+      'Authorization: Bearer other', 'accept: */*', 'CONTENT-TYPE: text/plain', 'host: evil.test', 'cookie: a=1',
+      'no-colon-here', ': empty name', 'bad name: value', 'x-a: a\u0007b', 'X-A: 1\nx-a: 2',
+      Array.from({ length: 21 }, (_, index) => `x-h${index}: v`).join('\n'),
+      'x-a: ' + 'v'.repeat(2001),
+    ];
+    for (const headers of invalid) await expect(f.service.save({ ...input, headers })).rejects.toThrow();
+    expect((await f.service.read()).config).toBeNull();
+    expect(f.fetcher).not.toHaveBeenCalled();
+  });
+
+  it('keeps the headers in the stored configuration', async () => {
+    const f = fixture();
+    await f.service.save({ ...input, headers: 'x-trace: abc' });
+    expect((await f.service.read()).config?.headers).toBe('x-trace: abc');
+    const restarted = new AiService(f.local, new MemoryStorage(), f.permission, f.fetcher);
+    expect((await restarted.read()).config?.headers).toBe('x-trace: abc');
+  });
+
+  it('still loads configurations written before the headers field existed', async () => {
+    const f = fixture();
+    f.local.items['ai:config:v1'] = { version: 1, baseUrl, model: 'legacy-model', remember: false };
+    expect((await f.service.read()).config).toMatchObject({ model: 'legacy-model', headers: '' });
   });
 });

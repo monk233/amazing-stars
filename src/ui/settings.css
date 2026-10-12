@@ -300,3 +300,18 @@
   .manager-workspace .mode-segment { padding-inline: 8px; gap: 6px; }
   .manager-workspace .account-facts { grid-template-columns: minmax(0, 1fr); gap: 14px; }
 }
+
+/* AI 提示词面板：固定契约只读展示，可编辑部分是分类准则与用户提示词。 */
+.manager-workspace .ai-panels { display: grid; gap: 28px; }
+.manager-workspace .prompt-input { min-height: 120px; resize: vertical; font-family: inherit; font-size: 13px; line-height: 1.75; }
+.manager-workspace .contract-details {
+  margin-top: 20px; padding: 14px 18px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+}
+.manager-workspace .contract-details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.manager-workspace .contract-details summary:hover { color: var(--ink); }
+.manager-workspace .contract-details summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.manager-workspace .contract-details pre {
+  margin: 14px 0 0; color: var(--muted); font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 12px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere;
+}

@@ -178,6 +178,15 @@ export class LocalDatabase {
     await done;
   }
 
+  /** 删除单条记录；用于清理草稿这类可丢弃的状态，不使用整表替换。 */
+  async remove(table: Table, accountId: string, id: string): Promise<void> {
+    assertKey(accountId); assertKey(id);
+    const tx = this.database.transaction(table, 'readwrite');
+    const done = completion(tx);
+    tx.objectStore(table).delete([accountId, id]);
+    await done;
+  }
+
   // A complete snapshot is replaced in one transaction; incomplete network pages must never call this method.
   async replace<K extends Table>(table: K, accountId: string, records: Tables[K][]): Promise<void> {
     assertKey(accountId);

@@ -3,12 +3,14 @@ import { browser } from 'wxt/browser';
 import { normalizeBaseUrl, permissionOrigin, type AiState } from '../ai/config';
 import { request } from './client';
 import { InfoTip } from './InfoTip';
+import { useDebouncedEffect } from './use-debounced-effect';
 
 export function AiSettings() {
   const [saved, setSaved] = useState<AiState | null>(null);
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
+  const [headers, setHeaders] = useState('');
   const [remember, setRemember] = useState(false);
   const [models, setModels] = useState<string[]>([]);
   const [busy, setBusy] = useState('加载配置');
@@ -18,10 +20,11 @@ export function AiSettings() {
     let active = true;
     void request({ type: 'AI_READ' }).then(reply => {
       if (!active) return;
-      if (!reply.ok || !('config' in reply.value)) throw new Error('AI 配置响应无效。');
+      if (!reply.ok || !('hasApiKey' in reply.value)) throw new Error('AI 配置响应无效。');
       setSaved(reply.value);
       setBaseUrl(reply.value.config?.baseUrl ?? '');
       setModel(reply.value.config?.model ?? '');
+      setHeaders(reply.value.config?.headers ?? '');
       setRemember(reply.value.config?.remember ?? false);
     }).catch(() => { if (active) setError('无法加载 AI 配置，请重新打开管理页。'); })
       .finally(() => { if (active) setBusy(''); });
@@ -29,18 +32,36 @@ export function AiSettings() {
   }, []);
 
   const dirty = !saved?.config || baseUrl.trim().replace(/\/+$/, '') !== saved.config.baseUrl ||
-    model.trim() !== saved.config.model || remember !== saved.config.remember || !!apiKey;
+    model.trim() !== saved.config.model || headers !== saved.config.headers || remember !== saved.config.remember || !!apiKey;
+  // 只有地址没变、也没有待保存的 Key 时才自动保存，避免把输入到一半的凭证写进存储。
+  const autoChanged = !!saved?.config && (model.trim() !== saved.config.model || headers !== saved.config.headers);
+  const autoBlocked = !saved?.config || !!apiKey || baseUrl.trim().replace(/\/+$/, '') !== saved.config.baseUrl;
+  useDebouncedEffect(() => { if (autoChanged && !autoBlocked) void saveQuiet(); }, 800, [model, headers]);
   function change() { setNotice(''); setError(''); }
   async function save() {
     setBusy('保存'); change();
     try {
       const normalized = normalizeBaseUrl(baseUrl);
-      const reply = await request({ type: 'AI_SAVE', config: { baseUrl: normalized, apiKey, model, remember } });
-      if (!reply.ok || !('config' in reply.value)) throw new Error('AI 配置响应无效。');
+      const reply = await request({ type: 'AI_SAVE', config: { baseUrl: normalized, apiKey, model, remember, headers } });
+      if (!reply.ok || !('hasApiKey' in reply.value)) throw new Error('AI 配置响应无效。');
       setSaved(reply.value); setBaseUrl(normalized); setApiKey('');
       setNotice('配置已保存。API Key 不会回填到表单。');
     } catch (error) { setError(error instanceof Error ? error.message : '保存失败，请重试。'); }
     finally { setBusy(''); }
+  }
+  /** 模型名与自定义请求头自动保存：不更换地址、也不经手 API Key。 */
+  async function saveQuiet() {
+    if (!saved?.config) return;
+    change();
+    try {
+      const reply = await request({
+        type: 'AI_SAVE',
+        config: { baseUrl: saved.config.baseUrl, apiKey: '', model, remember: saved.config.remember, headers },
+      });
+      if (!reply.ok || !('hasApiKey' in reply.value)) throw new Error('AI 配置响应无效。');
+      setSaved(reply.value);
+      setNotice('模型名与请求头已自动保存。');
+    } catch (error) { setError(error instanceof Error ? error.message : '自动保存失败，请检查配置。'); }
   }
   async function connect(type: 'AI_TEST' | 'AI_MODELS') {
     if (dirty || !saved?.config || !saved.hasApiKey) return;
@@ -97,8 +118,20 @@ export function AiSettings() {
               </li>)}
             </ul>}
           </div>
+          <div className="field">
+            <div className="field-head">
+              <span className="field-label">
+                <label htmlFor="ai-headers">自定义请求头</label>
+                <InfoTip label="自定义请求头说明">每行一个「名称: 值」，用于服务商要求的额外请求头，例如 x-opencode-session。Authorization、Content-Type、Accept 等由扩展管理，不能在这里覆盖。内容按普通配置保存在本机，不要放长期凭证。</InfoTip>
+              </span>
+            </div>
+            <textarea id="ai-headers" className="field-input prompt-input" rows={4} maxLength={2000} spellCheck={false}
+              placeholder="x-opencode-session: 你的会话 ID" value={headers}
+              onChange={event => { setHeaders(event.target.value); setModels([]); change(); }} />
+            <p className="field-help">请求头在停止输入后自动保存；切换地址或重新输入 Key 需要点下方的按钮验证。</p>
+          </div>
           <div className="action-row settings-actions">
-            <button className="button" type="submit">保存配置</button>
+            <button className="button" type="submit" disabled={!!busy || !saved}>{busy === '保存' ? '保存中…' : '验证并保存'}</button>
             <button className="button secondary" type="button" disabled={dirty || !saved?.hasApiKey} onClick={() => void connect('AI_TEST')}>测试连接</button>
             <button className="button secondary" type="button" disabled={dirty || !saved?.hasApiKey} onClick={() => void connect('AI_MODELS')}>获取模型目录</button>
           </div>

@@ -44,7 +44,7 @@ describe('仓库线索解析', () => {
 });
 
 describe('AI 设置专用消息', () => {
-  const config = { baseUrl: 'https://provider.example/v1', apiKey: 'secret-test-key', model: '', remember: false };
+  const config = { baseUrl: 'https://provider.example/v1', apiKey: 'secret-test-key', model: '', remember: false, headers: '' };
   const messages = [{ type: 'AI_READ' }, { type: 'AI_SAVE', config }, { type: 'AI_TEST', baseUrl: config.baseUrl }, { type: 'AI_MODELS', baseUrl: config.baseUrl }];
   it('allows AI operations only on the manager page', () => {
     for (const message of messages) {
@@ -58,6 +58,11 @@ describe('AI 设置专用消息', () => {
     expect(authorizeMessage({ type: 'AI_MODELS' }, ui, id)).toBeNull();
     expect(authorizeMessage({ type: 'AI_SAVE', config: { ...config, headers: {} } }, ui, id)).toBeNull();
     expect(authorizeMessage({ type: 'READ_CREDENTIAL' }, ui, id)).toBeNull();
+  });
+  it('accepts a custom headers string and rejects oversized or extra fields', () => {
+    expect(authorizeMessage({ type: 'AI_SAVE', config: { ...config, headers: 'x-opencode-session: session-123' } }, ui, id)?.type).toBe('AI_SAVE');
+    expect(authorizeMessage({ type: 'AI_SAVE', config: { ...config, headers: 'x'.repeat(2001) } }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_SAVE', config: { ...config, headers: 'x-a: 1', extra: true } }, ui, id)).toBeNull();
   });
 });
 
@@ -126,5 +131,46 @@ describe('Git privileged messages', () => {
   });
   it.each(['', 'short gitee', 'a'.repeat(1025), 'gitee token with spaces', 7, null])('rejects invalid Gitee tokens at the message boundary', token => {
     expect(authorizeMessage({ type: 'GIT_CONNECT', provider: 'gitee', token, remember: false }, ui, id)).toBeNull();
+  });
+});
+
+describe('AI 分类与提示词消息', () => {
+  const accountId = 'github:1';
+  const allowed = [
+    { type: 'AI_PROMPT_READ' },
+    { type: 'AI_PROMPT_SAVE', systemGuideline: '只按语言分类', userPrompt: '分类名用中文' },
+    { type: 'AI_CLASSIFY_CONFIG_READ' },
+    { type: 'AI_CLASSIFY_CONFIG_SAVE', includePrivate: true, timeoutSeconds: 200, batchSize: 30 },
+    { type: 'AI_CLASSIFY_START', accountId },
+    { type: 'AI_CLASSIFY_STEP', accountId },
+    { type: 'AI_CLASSIFY_READ', accountId },
+  ];
+  it('allows classification commands only on the manager page', () => {
+    for (const message of allowed) {
+      expect(authorizeMessage(message, ui, id)?.type).toBe(message.type);
+      expect(authorizeMessage(message, content, id)).toBeNull();
+      expect(authorizeMessage(message, { ...ui, url: `chrome-extension://${id}/popup.html` }, id)).toBeNull();
+      expect(authorizeMessage(message, { ...ui, id: 'other' }, id)).toBeNull();
+    }
+  });
+  it('rejects extra fields, invalid prompts, invalid account IDs and empty selections', () => {
+    expect(authorizeMessage({ type: 'AI_PROMPT_READ', extra: 1 }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_PROMPT_SAVE', systemGuideline: 1, userPrompt: '' }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_PROMPT_SAVE', systemGuideline: 'a'.repeat(8001), userPrompt: '' }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_PROMPT_SAVE', systemGuideline: 'ok', userPrompt: 'bad\u0007text' }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_PROMPT_SAVE', systemGuideline: 'ok', userPrompt: '', apiKey: 'x' }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_STEP', accountId: '   ' }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_STEP', accountId: 'a'.repeat(257) }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_STEP', accountId }, ui, id)?.type).toBe('AI_CLASSIFY_STEP');
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_CONFIG_SAVE', includePrivate: true, timeoutSeconds: 5, batchSize: 30 }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_CONFIG_SAVE', includePrivate: true, timeoutSeconds: 120, batchSize: 0 }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_CONFIG_SAVE', includePrivate: true, timeoutSeconds: 120, batchSize: 101 }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_CONFIG_SAVE', includePrivate: 'yes', timeoutSeconds: 120, batchSize: 30 }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_CONFIG_SAVE', includePrivate: true, timeoutSeconds: 120 }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_CONFIG_READ', extra: 1 }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_START', accountId, includePrivate: true }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_APPLY', accountId, accepted: ['r1'] }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_CANCEL', accountId }, ui, id)).toBeNull();
+    expect(authorizeMessage({ type: 'AI_CLASSIFY_FINISH', accountId }, ui, id)).toBeNull();
   });
 });

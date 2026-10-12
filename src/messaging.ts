@@ -1,12 +1,22 @@
 import { gitMessage, type GitMessage, type GitState } from './git/types';
 import type { Library } from './library/library';
 import { isAiInput, type AiInput, type AiState } from './ai/config';
+import type { ClassifyState } from './ai/classify';
+import { isPromptText, isTimeout, type AiPrompt, type ClassifyConfig } from './ai/prompt';
+import { isBatchSize } from './ai/classification';
 import { isAppearance } from './data/settings';
 import type { Appearance, Settings } from './data/types';
 
 export interface Sender { id?: string; url?: string; tab?: unknown }
 export type ContentMessage = { type: 'CONTENT_READY'; repository: string | null };
-export type UiMessage = GitMessage | { type: 'LIBRARY_READ'; accountId: string | null } | { type: 'GET_STATUS' } | { type: 'OPEN_MANAGER' } |
+/** 分类与提示词命令：只有管理页可以发起。 */
+export type ClassifyCommand =
+  | { type: 'AI_PROMPT_READ' }
+  | { type: 'AI_PROMPT_SAVE'; systemGuideline: string; userPrompt: string }
+  | { type: 'AI_CLASSIFY_CONFIG_READ' }
+  | { type: 'AI_CLASSIFY_CONFIG_SAVE'; includePrivate: boolean; timeoutSeconds: number; batchSize: number }
+  | { type: 'AI_CLASSIFY_START' | 'AI_CLASSIFY_STEP' | 'AI_CLASSIFY_READ'; accountId: string };
+export type UiMessage = GitMessage | ClassifyCommand | { type: 'LIBRARY_READ'; accountId: string | null } | { type: 'GET_STATUS' } | { type: 'OPEN_MANAGER' } |
   { type: 'SET_APPEARANCE'; appearance: Appearance } | { type: 'AI_READ' } |
   { type: 'AI_SAVE'; config: AiInput } | { type: 'AI_MODELS' | 'AI_TEST'; baseUrl: string };
 export type Message = ContentMessage | UiMessage;
@@ -14,12 +24,36 @@ export interface Status {
   phase: 'github'; github: 'access_token'; ai: 'configuration';
   settings: Settings; database: 'ready';
 }
-export type Reply = { ok: true; value: GitState | Library | Status | Settings | AiState | { models: string[] } | { modelCount: number } | { acknowledged: true } } |
+export type Reply = { ok: true; value: GitState | Library | Status | Settings | AiState | ClassifyState | ClassifyConfig | AiPrompt | { prompt: AiPrompt; defaults: AiPrompt } | { models: string[] } | { modelCount: number } | { acknowledged: true } } |
   { ok: false; error: string };
 
 const UI_PATHS = new Set(['/manager.html', '/popup.html']);
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
+const accountKey = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0 && value.length <= 256;
+
+/** 分类与提示词命令：字段数量固定，取值都必须落在约定范围内。 */
+function classifyMessage(input: Record<string, unknown>): ClassifyCommand | null {
+  const size = Object.keys(input).length;
+  if (input.type === 'AI_PROMPT_READ' && size === 1) return { type: 'AI_PROMPT_READ' };
+  if (input.type === 'AI_PROMPT_SAVE' && size === 3 && isPromptText(input.systemGuideline) && isPromptText(input.userPrompt)) {
+    return { type: 'AI_PROMPT_SAVE', systemGuideline: input.systemGuideline, userPrompt: input.userPrompt };
+  }
+  if (input.type === 'AI_CLASSIFY_CONFIG_READ' && size === 1) return { type: 'AI_CLASSIFY_CONFIG_READ' };
+  if (input.type === 'AI_CLASSIFY_CONFIG_SAVE' && size === 4 && typeof input.includePrivate === 'boolean' &&
+    isTimeout(input.timeoutSeconds) && isBatchSize(input.batchSize)) {
+    return {
+      type: 'AI_CLASSIFY_CONFIG_SAVE', includePrivate: input.includePrivate,
+      timeoutSeconds: input.timeoutSeconds, batchSize: input.batchSize,
+    };
+  }
+  if (size === 2 && accountKey(input.accountId) && (input.type === 'AI_CLASSIFY_START' || input.type === 'AI_CLASSIFY_STEP' ||
+    input.type === 'AI_CLASSIFY_READ')) {
+    return { type: input.type, accountId: input.accountId };
+  }
+  return null;
+}
 
 export function repositoryFromUrl(raw: string): string | null {
   try {
@@ -42,6 +76,8 @@ export function authorizeMessage(input: unknown, sender: Sender, extensionId: st
     if (url.pathname === '/manager.html') {
       const git = gitMessage(input);
       if (git) return git;
+      const classify = classifyMessage(input);
+      if (classify) return classify;
       if (input.type === 'LIBRARY_READ' && Object.keys(input).length === 2 && (input.accountId === null || (typeof input.accountId === 'string' && input.accountId.trim().length > 0 && input.accountId.length <= 256))) {
         return { type: 'LIBRARY_READ', accountId: input.accountId };
       }

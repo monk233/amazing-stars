@@ -342,3 +342,106 @@
 .manager-workspace .dialog-delete { margin-left: auto; }
 .manager-workspace .dialog-help { margin-top: 14px; }
 
+/* AI 整理按钮：运行中显示进度与旋转图标（ui-spec §12 的按钮内进度例外）。 */
+.manager-workspace .classify-button.is-running, .manager-workspace .classify-button:disabled { gap: 8px; }
+.manager-workspace .spinner {
+  width: 13px; height: 13px; flex: none; border-radius: 999px;
+  border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-top-color: currentColor;
+  animation: manager-spin 900ms linear infinite;
+}
+@keyframes manager-spin { to { transform: rotate(360deg); } }
+
+/* 提示条：顶部居中横幅，成功与失败都可手动关闭。 */
+.manager-workspace .toast-stack {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 70;
+  display: grid; gap: 10px; justify-items: center;
+  width: min(720px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.manager-workspace .toast {
+  pointer-events: auto; display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; width: 100%;
+  border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px;
+  background: var(--paper); box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 18%, transparent);
+  font-size: 13px; line-height: 1.75;
+  animation: manager-toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes manager-toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.manager-workspace .toast.error { border-left-color: var(--error); }
+.manager-workspace .toast-message { min-width: 0; overflow-wrap: anywhere; }
+.manager-workspace .toast-close { flex: none; }
+.manager-workspace .toast-close svg { width: 14px; height: 14px; }
+
+@media (max-width: 760px) {
+  .manager-workspace .toast-stack { top: 10px; width: calc(100vw - 24px); }
+}
+
+/* AI 整理窗口：内容型对话框，宽度上限高于普通确认框（见 ui-spec §4.7）。 */
+.manager-workspace .classify-dialog {
+  width: min(920px, 100%); max-height: min(80vh, 100%); overflow-y: auto; padding: 22px 24px 20px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--paper);
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--ink) 24%, transparent);
+}
+.manager-workspace .classify-dialog .dialog-head { margin-bottom: 14px; }
+.manager-workspace .classify-dialog-status { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.manager-workspace .classify-dialog-summary {
+  margin: 16px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--ground); font-size: 13px; line-height: 1.85;
+}
+.manager-workspace .classify-dialog-actions { margin-top: 20px; }
+.manager-workspace .classify-dialog .error { margin: 14px 0 0; }
+.manager-workspace .classify-dialog .inline-status, .manager-workspace .classify-dialog .inline-error { margin-top: 12px; }
+
+@media (max-width: 760px) {
+  .manager-workspace .classify-dialog { max-height: 100%; padding: 18px 16px 16px; }
+  .manager-workspace .classify-dialog-actions .button { flex: 1 1 auto; }
+}
+
+/* AI 整理视图：分栏建议、逐项确认与确认后写入。 */
+.manager-workspace .library-heading-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.manager-workspace .classify { display: grid; gap: 20px; }
+.manager-workspace .classify-caption { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+.manager-workspace .classify-controls {
+  display: grid; gap: 10px; padding: 16px 18px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+}
+.manager-workspace .classify-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.manager-workspace .classification-progress { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.manager-workspace .classification-empty {
+  margin: 0; padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+  color: var(--muted); font-size: 13px; line-height: 1.75;
+}
+.manager-workspace .classify-preview { display: grid; gap: 18px; }
+.manager-workspace .classify-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.manager-workspace .classify-column {
+  display: grid; align-content: start; gap: 12px; padding: 18px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+}
+.manager-workspace .classify-column h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; }
+.manager-workspace .suggestion-list { display: grid; list-style: none; margin: 0; padding: 0; }
+.manager-workspace .suggestion { border-top: 1px solid var(--line); }
+.manager-workspace .suggestion:first-child { border-top: 0; }
+.manager-workspace .suggestion-choice {
+  display: grid; grid-template-columns: 15px minmax(0, 1fr) auto; gap: 12px; align-items: start;
+  padding: 12px 6px; border-radius: 5px; cursor: pointer;
+}
+.manager-workspace .suggestion-choice:hover { background: var(--ground); }
+.manager-workspace .suggestion-choice input { margin-top: 3px; width: 15px; height: 15px; accent-color: var(--accent); }
+.manager-workspace .suggestion-copy { display: grid; gap: 4px; min-width: 0; }
+.manager-workspace .suggestion-name { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.manager-workspace .suggestion-target { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.manager-workspace .suggestion-target b { color: var(--ink); }
+.manager-workspace .suggestion-new { border-color: var(--accent); background: var(--soft); color: var(--ink); }
+.manager-workspace .suggestion-reason { color: var(--muted); font-size: 12px; line-height: 1.75; }
+.manager-workspace .suggestion-confidence { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.manager-workspace .classify-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.manager-workspace .classify-selection { display: flex; gap: 14px; margin-right: auto; }
+
+@media (max-width: 760px) {
+  .manager-workspace .classify-columns { grid-template-columns: minmax(0, 1fr); }
+  .manager-workspace .suggestion-choice { grid-template-columns: 15px minmax(0, 1fr); }
+  .manager-workspace .suggestion-confidence { grid-column: 2; }
+  .manager-workspace .classify-selection { width: 100%; margin-right: 0; }
+  .manager-workspace .library-heading-actions { width: 100%; }
+}
+

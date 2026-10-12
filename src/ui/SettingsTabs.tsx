@@ -3,10 +3,14 @@ import type { Appearance } from '../data/types';
 import { AppearanceSettings } from './AppearanceSettings';
 import { GitSettings } from './GitSettings';
 import { AiSettings } from './AiSettings';
+import { PromptSettings } from './PromptSettings';
+import { ClassifyConfig } from './ClassifyConfig';
 import { DataBoundary } from './DataBoundary';
 import type { GitController } from './use-git';
+import type { ClassifyController } from './use-ai';
 
 type TabId = 'appearance' | 'git' | 'ai' | 'boundary';
+const AI_TABS = [{ id: 'service', label: '服务配置' }, { id: 'prompt', label: '分类提示词' }, { id: 'classify', label: '整理配置' }] as const;
 const TABS: { id: TabId; number: string; label: string }[] = [
   { id: 'appearance', number: '01', label: '外观' },
   { id: 'git', number: '02', label: 'Git' },
@@ -15,13 +19,15 @@ const TABS: { id: TabId; number: string; label: string }[] = [
 ];
 
 /** Tabbed settings. Only the selected panel mounts; arrow keys move between tabs. */
-export function SettingsTabs({ appearance, saving, onChange, git }: {
+export function SettingsTabs({ appearance, saving, onChange, git, classify }: {
   appearance: Appearance | undefined;
   saving: boolean;
   onChange: (patch: Partial<Appearance>) => void;
   git: GitController;
+  classify: ClassifyController;
 }) {
   const [tab, setTab] = useState<TabId>(TABS[0]!.id);
+  const [aiTab, setAiTab] = useState<'service' | 'prompt' | 'classify'>('service');
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
   const root = useRef<HTMLDivElement>(null);
 
@@ -42,7 +48,24 @@ export function SettingsTabs({ appearance, saving, onChange, git }: {
   const panels: Record<TabId, ReactNode> = {
     appearance: <AppearanceSettings appearance={appearance} saving={saving} onChange={onChange} />,
     git: <GitSettings git={git} />,
-    ai: <AiSettings />,
+    ai: <div className="ai-panels">
+      <div className="settings-subtabs" role="tablist" aria-label="AI 服务分区">
+        {AI_TABS.map(item => <button key={item.id} type="button" role="tab" id={'ai-subtab-' + item.id}
+          aria-selected={aiTab === item.id} aria-controls={'ai-subpanel-' + item.id}
+          tabIndex={aiTab === item.id ? 0 : -1}
+          onClick={() => setAiTab(item.id)} onKeyDown={event => {
+            if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+            event.preventDefault();
+            const step = event.key === 'ArrowRight' ? 1 : -1;
+            const next = AI_TABS[(AI_TABS.findIndex(entry => entry.id === aiTab) + step + AI_TABS.length) % AI_TABS.length]!;
+            setAiTab(next.id);
+            document.getElementById('ai-subtab-' + next.id)?.focus();
+          }}>{item.label}</button>)}
+      </div>
+      <div role="tabpanel" id={'ai-subpanel-' + aiTab} aria-labelledby={'ai-subtab-' + aiTab}>
+        {aiTab === 'service' ? <AiSettings /> : aiTab === 'prompt' ? <PromptSettings classify={classify} /> : <ClassifyConfig classify={classify} />}
+      </div>
+    </div>,
     boundary: <DataBoundary />,
   };
   const active = TABS.find(item => item.id === tab) ?? TABS[0]!;
