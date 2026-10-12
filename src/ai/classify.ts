@@ -4,7 +4,7 @@ import type { Job, List, Repository } from '../data/types';
 import { applySuggestions } from '../library/apply-suggestions';
 import { nextBatch, normalizeSuggestions, parseSuggestions, unclassifiedQueue } from './classification';
 import { AiError } from './config';
-import { DEFAULT_SYSTEM_GUIDELINE, FIXED_CONTRACT, PromptStore, defaultPrompt, type AiPrompt, type ClassifyConfig } from './prompt';
+import { DEFAULT_SYSTEM_GUIDELINE, FIXED_CONTRACT, AiPreferences, defaultPrompt, type AiPrompt, type ClassifyConfig } from './preferences';
 import type { AiService } from './service';
 
 export const DRAFT_ID = 'classify:ai';
@@ -13,7 +13,7 @@ export const DRAFT_ID = 'classify:ai';
  * 整理草稿只记录进度与累计结果：每批建议通过校验后立即写入本地分类，没有待确认的中间态。
  * 队列跑完或某一批失败时草稿被删除，所以它只在运行期间存在。存 jobs 表，与同步任务同层但不共享记录。
  */
-export interface ClassificationDraft extends Job {
+export interface ClassifyDraft extends Job {
   mode: 'ai-classify';
   queue: string[];
   processed: number;
@@ -25,7 +25,7 @@ export interface ClassificationDraft extends Job {
 }
 
 export interface ClassifyState {
-  draft: ClassificationDraft | null;
+  draft: ClassifyDraft | null;
   unclassified: number;
   config: ClassifyConfig;
   /** 刚结束的一轮结果，用于界面给出摘要；普通读取时为 null。 */
@@ -44,7 +44,7 @@ export class ClassifyService {
     private readonly now: () => number = Date.now,
   ) {}
 
-  private prompts(): PromptStore { return new PromptStore(this.local); }
+  private prompts(): AiPreferences { return new AiPreferences(this.local); }
 
   async promptRead(): Promise<{ prompt: AiPrompt; defaults: AiPrompt }> {
     return { prompt: await this.prompts().read(), defaults: defaultPrompt() };
@@ -77,7 +77,7 @@ export class ClassifyService {
           ? `没有可整理的项目：${skippedPrivate} 个未分类项目都是私有仓库；需要时可在「AI 服务 → 整理配置」里允许发送私有项目。`
           : '没有未分类的项目，无需整理。');
       }
-      const draft: ClassificationDraft = {
+      const draft: ClassifyDraft = {
         accountId, id: DRAFT_ID, type: 'classify', targetId: 'unclassified', state: 'running',
         deduplicationKey: `classify:${accountId}`, revision: this.now(), attempts: 0, nextRunAt: 0, leaseUntil: null,
         mode: 'ai-classify', queue: queue.map(repo => repo.id), processed: 0, batchSize: config.batchSize,
@@ -130,12 +130,12 @@ export class ClassifyService {
     } finally { db.close(); }
   }
 
-  private async draft(db: LocalDatabase, accountId: string): Promise<ClassificationDraft | null> {
-    return await db.get('jobs', accountId, DRAFT_ID) as ClassificationDraft | undefined ?? null;
+  private async draft(db: LocalDatabase, accountId: string): Promise<ClassifyDraft | null> {
+    return await db.get('jobs', accountId, DRAFT_ID) as ClassifyDraft | undefined ?? null;
   }
 
   /** jobs 表声明为 Job；草稿是它的超集，经参数传递可避开对象字面量的多余属性检查。 */
-  private async putDraft(db: LocalDatabase, draft: ClassificationDraft): Promise<void> {
+  private async putDraft(db: LocalDatabase, draft: ClassifyDraft): Promise<void> {
     await db.put('jobs', draft.accountId, draft);
   }
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ClassifyState } from '../ai/classify';
-import type { AiPrompt, ClassifyConfig } from '../ai/prompt';
+import type { AiPrompt, ClassifyConfig } from '../ai/preferences';
 import { request } from './client';
 
 const reason = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;

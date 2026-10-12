@@ -5,9 +5,9 @@ import type { GitState } from '../../src/git/types';
 import type { ClassifyState } from '../../src/ai/classify';
 import { ClassifyConfig } from '../../src/ui/ClassifyConfig';
 import { GitSettings } from '../../src/ui/GitSettings';
-import { Library } from '../../src/ui/Library';
+import { WorkspaceShell } from '../../src/ui/WorkspaceShell';
 import { PromptSettings } from '../../src/ui/PromptSettings';
-import { ToastStack } from '../../src/ui/Toast';
+import { ToastStack } from '../../src/ui/ToastStack';
 import type { GitController } from '../../src/ui/use-git';
 import type { ClassifyController } from '../../src/ui/use-ai';
 
@@ -65,7 +65,7 @@ describe('管理页渲染路径', () => {
     expect(html).not.toContain('只同步 Stars（Gitee 没有 Lists）');
   });
   it('renders the library shell with the category rail while data loads', () => {
-    const html = renderToString(createElement(Library, {
+    const html = renderToString(createElement(WorkspaceShell, {
       git: controller(null), classify: emptyClassify(), route: 'library', notice: null, children: null,
     }));
     expect(html).toContain('分类');
@@ -86,7 +86,7 @@ describe('管理页渲染路径', () => {
     expect(html).toContain('处理中…');
   });
   it('renders the settings route with the Git panel mounted', () => {
-    const html = renderToString(createElement(Library, {
+    const html = renderToString(createElement(WorkspaceShell, {
       git: controller(giteeState), classify: emptyClassify(), route: 'settings', notice: null,
       children: createElement(GitSettings, { git: controller(giteeState) }),
     }));
@@ -100,7 +100,7 @@ describe('AI 整理界面渲染路径', () => {
   it('renders the prompt panel with editable fields and the read-only contract', () => {
     const html = visible(renderToString(createElement(PromptSettings, { classify: prompted() })));
     expect(html).toContain('分类提示词');
-    expect(html).toContain('系统提示词：分类准则');
+    expect(html).toContain('系统提示词 · 分类准则');
     expect(html).toContain('用户提示词');
     expect(html).toContain('恢复默认');
     expect(html).toContain('查看固定的输出契约与安全约束');
@@ -131,13 +131,13 @@ describe('AI 整理界面渲染路径', () => {
   });
 
   it('shows classification progress on the library button instead of opening a dialog', () => {
-    const idle = visible(renderToString(createElement(Library, {
+    const idle = visible(renderToString(createElement(WorkspaceShell, {
       git: controller(giteeState), classify: emptyClassify(), route: 'library', notice: null, children: null,
     })));
     expect(idle).toContain('AI 整理');
     expect(idle).not.toContain('整理中');
 
-    const busy = visible(renderToString(createElement(Library, {
+    const busy = visible(renderToString(createElement(WorkspaceShell, {
       git: controller(giteeState), route: 'library', notice: null, children: null,
       classify: emptyClassify({ running: true, progress: { processed: 12, total: 63 } }),
     })));

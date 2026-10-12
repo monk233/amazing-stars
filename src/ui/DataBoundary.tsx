@@ -22,7 +22,7 @@ export function DataBoundary() {
             <li>读取 Stars 的只读请求发往 api.github.com 或 gitee.com/api/v5，使用你为对应账号填写的令牌。</li>
             <li>选择「同步 Stars 与 Lists」时，读取 GitHub Lists 与归属同样只是只读请求。</li>
             <li>扩展目前没有调用任何创建或修改远端 Lists 的接口。</li>
-            <li>AI 请求只发往你保存的服务地址，且只在手动测试或获取模型目录时发生，不包含仓库内容。</li>
+            <li>AI 请求只发往你保存的服务地址：测试连接与获取模型目录时只发送配置，整理收藏时发送项目的名称、描述、语言与 topics，私有仓库默认跳过。</li>
           </ul>
         </div>
       </div>

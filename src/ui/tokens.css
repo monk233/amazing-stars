@@ -1,20 +1,42 @@
+/* 全局基础。主题色值、字体、尺寸与动效档位只在这里定义一次，组件通过语义 token 引用。 */
 :root {
   color-scheme: light;
-  --ground: #f5f3ee; --paper: #fffefa; --ink: #232b28; --muted: #66716c;
-  --line: #d9ddd5; --accent: #305d49; --accent-ink: #fff;
-  --soft: #e9eee6; --error: #a32b34;
+  --ground: #f5f4f0; --paper: #fdfcf9; --rail: #f1f0eb;
+  --ink: #292b27; --muted: #6c6e66; --line: #e1e2da;
+  --accent: #38483b; --accent-ink: #ffffff; --soft: #e7ece2; --error: #a32b34;
+  --display: Fraunces, 'Songti SC', 'SimSun', serif;
+  --radius-xs: 3px; --radius-sm: 5px; --radius-md: 8px; --radius-lg: 10px; --radius-pill: 999px;
+  --motion-fast: 120ms; --motion-base: 140ms; --motion-slow: 200ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-feedback: ease;
+  --z-base: 0; --z-controls: 3; --z-rail-mobile: 5; --z-menu: 10; --z-tip: 20; --z-dialog: 60; --z-toast: 70;
   font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-  color: var(--ink); background: var(--ground); font-size: 15px;
+  color: var(--ink); background: var(--ground);
 }
-:root[data-theme="observatory"] { --ground:#f0f3f8; --paper:#fff; --ink:#202d45; --muted:#596a7f; --line:#d4dce7; --accent:#364e80; --soft:#e4eaf4; }
-:root[data-mode="dark"] { color-scheme:dark; --ground:#171c19; --paper:#202723; --ink:#edf0e9; --muted:#a8b7ad; --line:#3c4a40; --accent:#b6d1a8; --accent-ink:#162315; --soft:#2d382f; --error:#ffa7ad; }
-:root[data-theme="observatory"][data-mode="dark"] { --ground:#111c2d; --paper:#19283c; --ink:#ecf0f8; --muted:#acbdd3; --line:#384b65; --accent:#b3c8f4; --accent-ink:#12253f; --soft:#263850; }
+
+:root[data-theme="observatory"] {
+  --ground: #f2f3f5; --paper: #fcfcfd; --rail: #eeeff2; --ink: #2b303b;
+  --muted: #656d7d; --line: #dde0e6; --accent: #3c4e68; --soft: #e8edf3;
+  --display: Space, 'Microsoft YaHei', sans-serif;
+}
+
+:root[data-mode="dark"] {
+  color-scheme: dark;
+  --ground: #1b1c19; --paper: #22231f; --rail: #1e1f1b; --ink: #eaeae3;
+  --muted: #aaaca1; --line: #3b3d34; --accent: #ced9bf; --accent-ink: #252b20;
+  --soft: #333b2e; --error: #ffa7ad;
+}
+
+:root[data-theme="observatory"][data-mode="dark"] {
+  --ground: #1b1e24; --paper: #22262d; --rail: #1e2228; --ink: #e9ecf1;
+  --muted: #a5aeba; --line: #3b424d; --accent: #c6d3e5; --accent-ink: #252b20; --soft: #303b4a;
+}
+
 * { box-sizing:border-box; }
 body { margin:0; min-width:320px; }
 button,input,select { font:inherit; }
 button,a { -webkit-tap-highlight-color:transparent; }
 button { cursor:pointer; }
-button:disabled { cursor:wait; opacity:.65; }
+button:disabled { cursor:not-allowed; opacity:.6; }
 a { color:var(--accent); text-underline-offset:4px; }
 :focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
 ::selection { background:var(--accent); color:var(--accent-ink); }
@@ -23,8 +45,8 @@ h2 { font-size:20px; font-weight:600; margin:0 0 12px; }
 p { line-height:1.85; max-width:66ch; }
 .button {
   display:inline-flex; justify-content:center; align-items:center; padding:11px 18px; gap:8px;
-  border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink);
-  text-decoration:none; transition:opacity 140ms ease, transform 140ms ease;
+  border-radius:var(--radius-sm); border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink);
+  text-decoration:none; transition:opacity var(--motion-base) var(--ease-feedback), transform var(--motion-base) var(--ease-feedback);
 }
 .button:hover:not(:disabled) { opacity:.86; }
 .button:active:not(:disabled) { transform:translateY(1px); }
@@ -34,5 +56,4 @@ p { line-height:1.85; max-width:66ch; }
 fieldset { border:0; padding:0; margin:24px 0; }
 legend { margin-bottom:12px; font-weight:600; }
 input { accent-color:var(--accent); }
-@media(max-width:600px) { h1 { font-size:26px; } }
-@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }

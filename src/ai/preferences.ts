@@ -70,7 +70,7 @@ function promptText(raw: unknown, label: string): string {
 }
 
 /** 提示词与分类偏好的本地存储。默认值来自代码常量，不随扩展更新被覆盖。 */
-export class PromptStore {
+export class AiPreferences {
   constructor(private readonly storage: StorageArea) {}
 
   async read(): Promise<AiPrompt> {

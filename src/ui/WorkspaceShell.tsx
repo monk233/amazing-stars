@@ -1,6 +1,6 @@
 import type { GitController } from './use-git';
 import type { ClassifyController } from './use-ai';
-import { ToastStack } from './Toast';
+import { ToastStack } from './ToastStack';
 import { useToasts } from './use-toasts';
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import type { List, Repository } from '../data/types';
@@ -45,7 +45,7 @@ function ProjectDetail({ repo, data, onClose, onMove }: {
 
 interface Editor { id: string | null; name: string; description: string }
 
-export function Library({ route, children, notice, git, classify }: { git: GitController; classify: ClassifyController; route: string; children: ReactNode; notice: ReactNode }) {
+export function WorkspaceShell({ route, children, notice, git, classify }: { git: GitController; classify: ClassifyController; route: string; children: ReactNode; notice: ReactNode }) {
   const [data, setData] = useState<LibraryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -207,7 +207,7 @@ export function Library({ route, children, notice, git, classify }: { git: GitCo
       <span className="brand-caption">你的开源收藏馆</span>
       <nav className="primary-nav" aria-label="主导航">
         <a href="#library" onClick={() => goLibrary('')} aria-current={route === 'library' && !selected && !filters.listId ? 'page' : undefined}>
-          <WorkspaceIcon name="collection" />所有收藏<span className="nav-count">{data?.repositories.length ?? '—'}</span>
+          <WorkspaceIcon name="collection" />所有收藏<span className="nav-count">{data?.repositories.length ?? '…'}</span>
         </a>
       </nav>
       <div className="rail-section">
@@ -216,7 +216,7 @@ export function Library({ route, children, notice, git, classify }: { git: GitCo
             onClick={() => { setConfirming(''); setEditor({ id: null, name: '', description: '' }); }}>
             <WorkspaceIcon name="plus" />
           </button></span></div>
-        <div className="rail-list" aria-label="分类列表">
+        <div className="rail-list" role="group" aria-label="分类列表">
           {data?.lists.map(categoryRow)}
           {!data?.lists.length && <p className="rail-empty">还没有分类。手动新建，或在 Git 设置里选择「同步 Stars 与 Lists」。</p>}
         </div>
@@ -272,7 +272,7 @@ export function Library({ route, children, notice, git, classify }: { git: GitCo
               </div>
             </div>}
             <header className="library-header">
-              <div className="library-heading"><span className="eyebrow">我的收藏馆</span><div className="title-line"><h1 id="library-title">{categoryName}</h1><span className="collection-count">{data ? results.length : '—'}</span></div>
+              <div className="library-heading"><span className="eyebrow">我的收藏馆</span><div className="title-line"><h1 id="library-title">{categoryName}</h1><span className="collection-count">{data ? results.length : '…'}</span></div>
                 {selectedCategory?.description && <p className="category-description">{selectedCategory.description}</p>}
                 <p className="sync-caption" role="status">{syncRunning ? '正在同步，当前展示上次快照' : activeAccount?.lastSyncedAt ? '上次同步 ' + formattedDate(activeAccount.lastSyncedAt) : '从 ' + providerLabel + ' 同步你的开源收藏'}</p>
               </div>
@@ -302,24 +302,24 @@ export function Library({ route, children, notice, git, classify }: { git: GitCo
                     <div><span>可见性</span><SelectMenu label="可见性" value={filters.visibility} disabled={loading || !data?.repositories.length} options={[{ value: '', label: '公开与私有' }, { value: 'public', label: '公开' }, { value: 'private', label: '私有' }]} onChange={value => change({ visibility: value })} /></div>
                     <div><span>项目状态</span><SelectMenu label="项目状态" value={filters.archived} disabled={loading || !data?.repositories.length} options={[{ value: '', label: '全部状态' }, { value: 'false', label: '未归档' }, { value: 'true', label: '已归档' }]} onChange={value => change({ archived: value })} /></div>
                   </fieldset>
-                  <div className="tag-filters" aria-label="多维标签筛选">
+                  <div className="tag-filters" role="group" aria-label="多维标签筛选">
                     {data?.dimensions.map(dimension => <fieldset className="dimension" key={dimension.id} disabled={loading || !data.repositories.length}><legend>{dimension.name}</legend><div className="tags">
                       {data.tags.filter(tag => tag.dimensionId === dimension.id).map(tag => <button className="tag tag-filter" key={tag.id} aria-pressed={filters.tagIds.includes(tag.id)} onClick={() => change({ tagIds: filters.tagIds.includes(tag.id) ? filters.tagIds.filter(id => id !== tag.id) : [...filters.tagIds, tag.id] })}>{filters.tagIds.includes(tag.id) && <WorkspaceIcon name="check" />}{tag.name}</button>)}
                     </div>{!data.tags.some(tag => tag.dimensionId === dimension.id) && <p className="note">暂无标签</p>}</fieldset>)}
                   </div>
-                  <div className="filter-panel-footer"><button className="small-link" disabled={!extraCount} onClick={() => change({ language: '', visibility: '', archived: '', tagIds: [] })}>重置条件</button></div>
+                  <div className="filter-panel-footer"><button className="small-link" disabled={!extraCount} onClick={() => change({ language: '', visibility: '', archived: '', tagIds: [] })}>清除筛选</button></div>
                 </div>
               </details>
               <div className="library-sort"><SelectMenu label="排序" value={filters.sort} disabled={!data?.repositories.length} options={[{ value: 'starred', label: '最近收藏' }, { value: 'updated', label: '最近推送' }, { value: 'name', label: '项目名称' }]} onChange={value => change({ sort: value as Filters['sort'] })} /></div>
             </div>
-            {!!hasFilters && <div className="active-filters" aria-label="已选条件">
+            {!!hasFilters && <div className="active-filters" role="group" aria-label="已选条件">
               {filters.query.trim() && <button className="filter-chip" onClick={() => change({ query: '' })} aria-label="移除关键词">“{filters.query.trim()}”<WorkspaceIcon name="close" /></button>}
               {filters.listId && <button className="filter-chip" onClick={() => change({ listId: '' })} aria-label="移除分类">{categoryName}<WorkspaceIcon name="close" /></button>}
               {filters.language && <button className="filter-chip" onClick={() => change({ language: '' })} aria-label="移除语言">{filters.language === '__none' ? '未标注语言' : filters.language}<WorkspaceIcon name="close" /></button>}
               {filters.visibility && <button className="filter-chip" onClick={() => change({ visibility: '' })} aria-label="移除可见性">{filters.visibility === 'private' ? '私有' : '公开'}<WorkspaceIcon name="close" /></button>}
               {filters.archived && <button className="filter-chip" onClick={() => change({ archived: '' })} aria-label="移除项目状态">{filters.archived === 'true' ? '已归档' : '未归档'}<WorkspaceIcon name="close" /></button>}
               {filters.tagIds.map(id => <button className="filter-chip" key={id} onClick={() => change({ tagIds: filters.tagIds.filter(tag => tag !== id) })} aria-label={'移除标签 ' + data?.tags.find(tag => tag.id === id)?.name}>{data?.tags.find(tag => tag.id === id)?.name}<WorkspaceIcon name="close" /></button>)}
-              <button className="small-link" onClick={reset}>清除全部</button>
+              <button className="small-link" onClick={reset}>清除筛选</button>
             </div>}
             {(git.error || connection?.sync?.error) && <p role="alert" className="error">{git.error || connection?.sync?.error} <a href="#settings">查看 Git 设置</a></p>}
             {error && <div role="alert" className="error">{error} <button className="outline-button" onClick={() => void load(null)}>重新读取账号</button></div>}
@@ -327,7 +327,7 @@ export function Library({ route, children, notice, git, classify }: { git: GitCo
             <div className="library-results" ref={resultsPane} aria-busy={loading}>
               {loading && <div className="loading-results" role="status"><WorkspaceIcon name="collection" /><p>正在读取你的收藏…</p></div>}
               {!loading && data && (!data.repositories.length ? <div className="empty-results"><StarMark size={44} /><span className="eyebrow">从一颗 Star 开始</span><h2>{data.accountId ? '还没有同步的收藏' : '把好项目，放在一起。'}</h2><p>连接 GitHub 或 Gitee，收藏、分类和项目详情就会出现在这里。</p><button className="button" disabled={git.busy || syncRunning} onClick={() => { if (connection?.connected) void git.send({ type: 'GIT_SYNC', accountId: connection.account.accountId }); else location.hash = 'settings'; }}>{syncLabel}<WorkspaceIcon name="arrow" /></button></div>
-                : !results.length ? <div className="empty-results"><WorkspaceIcon name="search" /><h2>没有匹配的收藏</h2><p>换个关键词，或减少筛选条件。</p><button className="outline-button" onClick={reset}>清除全部筛选</button></div>
+                : !results.length ? <div className="empty-results"><WorkspaceIcon name="search" /><h2>没有匹配的收藏</h2><p>换个关键词，或减少筛选条件。</p><button className="outline-button" onClick={reset}>清除筛选</button></div>
                   : <div className="repo-list">{results.slice((page - 1) * 40, page * 40).map(repo => {
                     const [owner, name] = repo.fullName.split('/');
                     const memberships = data.lists.filter(list => data.memberships.some(link => link.repositoryId === repo.id && link.listId === list.id));

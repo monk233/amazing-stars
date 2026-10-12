@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MAX_BATCH_SIZE, MIN_BATCH_SIZE, isBatchSize } from '../ai/classification';
-import { MAX_TIMEOUT_SECONDS, MIN_TIMEOUT_SECONDS, isTimeout } from '../ai/prompt';
+import { MAX_TIMEOUT_SECONDS, MIN_TIMEOUT_SECONDS, isTimeout } from '../ai/preferences';
 import { InfoTip } from './InfoTip';
 import { useDebouncedEffect } from './use-debounced-effect';
 import type { ClassifyController } from './use-ai';
@@ -57,7 +57,6 @@ export function ClassifyConfig({ classify }: { classify: ClassifyController }) {
           <p className="field-help">每次请求包含多少个项目，{MIN_BATCH_SIZE} 到 {MAX_BATCH_SIZE} 之间。数量越大，单次请求越慢、越容易触发超时。</p>
         </div>
         <div className="field">
-          <div className="field-label"><span>私有仓库</span></div>
           <label className="checkbox-row" htmlFor="ai-include-private">
             <input id="ai-include-private" type="checkbox" checked={value.includePrivate}
               onChange={event => { setIncludePrivate(event.target.checked); classify.clearError(); }} />

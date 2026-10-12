@@ -20,7 +20,7 @@ export function AppearanceSettings({ appearance, saving, onChange }: {
   onChange: (patch: Partial<Appearance>) => void;
 }) {
   const disabled = !appearance || saving;
-  const status = saving ? '正在保存外观设置…' : appearance ? '外观设置已保存。' : '正在读取外观设置…';
+  const status = saving ? '正在保存外观设置…' : appearance ? '' : '正在读取外观设置…';
   return <>
     <header className="settings-panel-head">
       <h2 id="settings-appearance-title">外观</h2>
@@ -51,9 +51,9 @@ export function AppearanceSettings({ appearance, saving, onChange }: {
           </label>)}
         </div>
       </fieldset>
-      <p className="inline-status" role="status" aria-live="polite">
-        {appearance && !saving && <WorkspaceIcon name="check" />}{status}
-      </p>
+      {status && <p className="inline-status" role="status" aria-live="polite">
+        {saving && <WorkspaceIcon name="check" />}{status}
+      </p>}
     </div>
   </>;
 }

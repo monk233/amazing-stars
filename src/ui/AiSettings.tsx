@@ -122,7 +122,7 @@ export function AiSettings() {
             <div className="field-head">
               <span className="field-label">
                 <label htmlFor="ai-headers">自定义请求头</label>
-                <InfoTip label="自定义请求头说明">每行一个「名称: 值」，用于服务商要求的额外请求头，例如 x-opencode-session。Authorization、Content-Type、Accept 等由扩展管理，不能在这里覆盖。内容按普通配置保存在本机，不要放长期凭证。</InfoTip>
+                <InfoTip label="自定义请求头说明">每行一个「名称: 值」，例如 x-opencode-session。Authorization、Content-Type 等由扩展管理，不能覆盖；内容按普通配置保存在本机，不要放长期凭证。</InfoTip>
               </span>
             </div>
             <textarea id="ai-headers" className="field-input prompt-input" rows={4} maxLength={2000} spellCheck={false}

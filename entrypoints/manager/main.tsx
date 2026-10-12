@@ -1,10 +1,10 @@
 import { useGit } from '../../src/ui/use-git';
 import { useClassify } from '../../src/ui/use-ai';
-import { Library } from '../../src/ui/Library';
+import { WorkspaceShell } from '../../src/ui/WorkspaceShell';
 import { SettingsTabs } from '../../src/ui/SettingsTabs';
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { useFoundation } from '../../src/ui/use-foundation';
+import { useWorkspaceStatus } from '../../src/ui/use-workspace-status';
 import type { Appearance } from '../../src/data/types';
 import '../../src/ui/tokens.css';
 import '../../src/ui/settings.css';
@@ -15,7 +15,7 @@ const routeFromHash = () => location.hash.startsWith('#settings') ? 'settings' :
 function App() {
   const git = useGit();
   const classify = useClassify();
-  const { status, error, saving, load, saveAppearance } = useFoundation();
+  const { status, error, saving, load, saveAppearance } = useWorkspaceStatus();
   const [route, setRoute] = useState(routeFromHash);
   useEffect(() => {
     const onHash = () => setRoute(routeFromHash());
@@ -24,7 +24,7 @@ function App() {
   }, []);
   const appearance = status?.settings.appearance;
   const change = (patch: Partial<Appearance>) => { if (appearance) void saveAppearance({ ...appearance, ...patch }); };
-  return <Library git={git} classify={classify} route={route} notice={<>
+  return <WorkspaceShell git={git} classify={classify} route={route} notice={<>
     {error && <div role="alert" className="error">{error} <button className="button secondary" onClick={() => void load()}>重试</button></div>}
   </>}>
     {status ? <div className="settings-page">
@@ -33,7 +33,7 @@ function App() {
       <span className="skeleton-tabs" /><span className="skeleton-title" /><span className="skeleton-line" />
       <span className="skeleton-cards"><span /><span /></span>
     </div> : null}
-  </Library>;
+  </WorkspaceShell>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);

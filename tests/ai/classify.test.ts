@@ -4,7 +4,7 @@ import { openDatabase, type LocalDatabase } from '../../src/data/database';
 import { ClassifyService, DRAFT_ID } from '../../src/ai/classify';
 import type { AiService } from '../../src/ai/service';
 import type { List, Repository } from '../../src/data/types';
-import { PromptStore } from '../../src/ai/prompt';
+import { AiPreferences } from '../../src/ai/preferences';
 import { MemoryStorage } from '../helpers/storage';
 
 const repository = (id: string, over: Partial<Repository> = {}): Repository => ({
@@ -75,7 +75,7 @@ describe('草稿建立与候选', () => {
     await service.configSave({ includePrivate: true, timeoutSeconds: 120, batchSize: 30 });
     const shown = await service.start('a1');
     expect(shown.draft?.queue).toHaveLength(2);
-    expect(await new PromptStore(local).classifyConfig()).toEqual({ includePrivate: true, timeoutSeconds: 120, batchSize: 30 });
+    expect(await new AiPreferences(local).classifyConfig()).toEqual({ includePrivate: true, timeoutSeconds: 120, batchSize: 30 });
   });
 
   it('只有私有未分类项目时给出可执行的说明', async () => {

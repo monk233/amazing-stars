@@ -4,7 +4,7 @@ import type { Appearance } from '../data/types';
 import { request } from './client';
 import { applyAppearance } from './theme';
 
-export function useFoundation() {
+export function useWorkspaceStatus() {
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

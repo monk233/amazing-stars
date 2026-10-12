@@ -10,9 +10,9 @@
 }
 .manager-workspace .settings-tabs button {
   position: relative; display: inline-flex; align-items: baseline; gap: 9px;
-  padding: 12px 15px 13px; border: 0; border-radius: 6px 6px 0 0; background: transparent;
+  padding: 12px 15px 13px; border: 0; border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: transparent;
   color: var(--muted); font-size: 13px; cursor: pointer;
-  transition: color 160ms ease, background-color 160ms ease;
+  transition: color var(--motion-base) var(--ease-feedback), background-color var(--motion-base) var(--ease-feedback);
 }
 .manager-workspace .settings-tabs button b {
   font-family: var(--display); font-size: 10px; font-weight: 500; letter-spacing: .1em; color: inherit;
@@ -21,31 +21,30 @@
 .manager-workspace .settings-tabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; }
 .manager-workspace .settings-tabs button[aria-selected="true"] b { color: var(--accent); }
 .manager-workspace .settings-tabs button[aria-selected="true"]::after {
-  content: ""; position: absolute; inset: auto 0 -1px 0; height: 2px; border-radius: 1px; background: var(--accent);
+  content: ""; position: absolute; inset: auto 0 -1px 0; height: 2px; border-radius: var(--radius-xs); background: var(--accent);
 }
 .manager-workspace .settings-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* Panel: heading, then a single column of aligned blocks. */
 .manager-workspace .settings-panel { display: grid; gap: 30px; max-width: 880px; }
-.manager-workspace .settings-panel:focus-visible { outline: none; }
 .manager-workspace .settings-panel-head h2 {
-  font-family: var(--display); font-size: 24px; font-weight: 550; letter-spacing: -.035em; line-height: 1.3;
+  font-family: var(--display); font-size: 25px; font-weight: 550; letter-spacing: -.035em; line-height: 1.3;
   margin: 0 0 9px; text-wrap: balance;
 }
 .manager-workspace .settings-panel-head > p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.75; max-width: 62ch; }
 .manager-workspace .settings-panel-body { display: grid; gap: 34px; }
 .manager-workspace .settings-panel code {
   font-family: "Cascadia Code", Consolas, monospace; font-size: .92em; padding: 1px 5px;
-  border: 1px solid var(--line); border-radius: 3px; background: var(--ground);
+  border: 1px solid var(--line); border-radius: var(--radius-xs); background: var(--ground);
 }
 
 /* Sub-tabs inside a panel: lighter than the numbered main tabs, still keyboard-driven. */
 .manager-workspace .settings-subtabs { display: flex; flex-wrap: wrap; gap: 6px; }
 .manager-workspace .settings-subtabs button {
   display: inline-flex; align-items: center; min-height: 36px; padding: 8px 15px;
-  border: 1px solid var(--line); border-radius: 999px; background: var(--paper);
-  color: var(--muted); font-size: 12.5px; cursor: pointer;
-  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+  border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--paper);
+  color: var(--muted); font-size: 13px; cursor: pointer;
+  transition: color var(--motion-base) var(--ease-feedback), border-color var(--motion-base) var(--ease-feedback), background-color var(--motion-base) var(--ease-feedback);
 }
 .manager-workspace .settings-subtabs button:hover { color: var(--ink); border-color: color-mix(in srgb, var(--muted) 45%, var(--line)); }
 .manager-workspace .settings-subtabs button[aria-selected="true"] { background: var(--soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
@@ -67,8 +66,8 @@
 .manager-workspace .theme-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .manager-workspace .theme-card {
   position: relative; display: grid; gap: 14px; padding: 14px 14px 16px; cursor: pointer;
-  border: 1px solid var(--line); border-radius: 9px; background: var(--paper);
-  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--paper);
+  transition: border-color var(--motion-slow) var(--ease-feedback), background-color var(--motion-slow) var(--ease-feedback), transform var(--motion-slow) var(--ease-feedback);
 }
 .manager-workspace .theme-card:hover { border-color: color-mix(in srgb, var(--muted) 55%, var(--line)); transform: translateY(-1px); }
 .manager-workspace .theme-card:active { transform: translateY(0); }
@@ -79,8 +78,8 @@
 .manager-workspace .theme-card-copy small { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.7; }
 .manager-workspace .theme-check {
   position: absolute; top: 12px; right: 12px; display: grid; place-items: center;
-  width: 22px; height: 22px; border-radius: 5px; background: var(--accent); color: var(--accent-ink);
-  opacity: 0; transition: opacity 180ms ease;
+  width: 22px; height: 22px; border-radius: var(--radius-sm); background: var(--accent); color: var(--accent-ink);
+  opacity: 0; transition: opacity var(--motion-slow) var(--ease-feedback);
 }
 .manager-workspace .theme-card:has(input:checked) .theme-check { opacity: 1; }
 .manager-workspace .theme-check svg { width: 14px; height: 14px; }
@@ -88,17 +87,17 @@
 /* Miniature of the workspace, painted with the candidate palette. */
 .manager-workspace .theme-thumb {
   display: grid; grid-template-columns: 34% minmax(0, 1fr); height: 108px; overflow: hidden;
-  border: 1px solid var(--thumb-line); border-radius: 6px; background: var(--thumb-ground);
+  border: 1px solid var(--thumb-line); border-radius: var(--radius-sm); background: var(--thumb-ground);
 }
 .manager-workspace .theme-thumb-rail {
   display: grid; align-content: start; gap: 7px; padding: 11px 9px;
   background: var(--thumb-rail); border-right: 1px solid var(--thumb-line);
 }
-.manager-workspace .theme-thumb-rail i { display: block; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--thumb-ink) 22%, transparent); }
+.manager-workspace .theme-thumb-rail i { display: block; height: 5px; border-radius: var(--radius-xs); background: color-mix(in srgb, var(--thumb-ink) 22%, transparent); }
 .manager-workspace .theme-thumb-rail i:first-child { width: 74%; height: 9px; background: var(--thumb-accent); }
 .manager-workspace .theme-thumb-rail i:nth-child(3) { width: 86%; background: color-mix(in srgb, var(--thumb-accent) 60%, transparent); }
 .manager-workspace .theme-thumb-body { display: grid; align-content: start; gap: 9px; padding: 13px 12px; }
-.manager-workspace .theme-thumb-body b { display: block; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--thumb-ink) 16%, transparent); }
+.manager-workspace .theme-thumb-body b { display: block; height: 6px; border-radius: var(--radius-xs); background: color-mix(in srgb, var(--thumb-ink) 16%, transparent); }
 .manager-workspace .theme-thumb-body b:first-child { width: 58%; height: 12px; background: color-mix(in srgb, var(--thumb-ink) 62%, transparent); }
 .manager-workspace .theme-thumb-body b:nth-child(2) { width: 82%; }
 .manager-workspace .theme-thumb-body b:nth-child(3) { width: 30%; background: var(--thumb-accent); opacity: .9; }
@@ -124,16 +123,16 @@
 /* Light/dark choice: a single segmented control instead of three loose chips. */
 .manager-workspace .mode-segments {
   display: inline-grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px;
-  border: 1px solid var(--line); border-radius: 8px; background: var(--ground);
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--ground);
 }
 .manager-workspace .mode-segment {
   position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 40px; padding: 8px 16px; border-radius: 6px; cursor: pointer;
-  font-size: 12.5px; color: var(--muted); transition: background-color 180ms ease, color 180ms ease;
+  min-height: 40px; padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 13px; color: var(--muted); transition: background-color var(--motion-slow) var(--ease-feedback), color var(--motion-slow) var(--ease-feedback);
 }
 .manager-workspace .mode-segment input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .manager-workspace .mode-segment:hover { color: var(--ink); }
-.manager-workspace .mode-segment:has(input:checked) { background: var(--paper); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px #2028200d; }
+.manager-workspace .mode-segment:has(input:checked) { background: var(--paper); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 5%, transparent); }
 .manager-workspace .mode-segment:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .manager-workspace .mode-segment svg { width: 15px; height: 15px; }
 
@@ -143,22 +142,22 @@
 .manager-workspace .field-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; }
 .manager-workspace .field-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
 .manager-workspace .field-head > label { font-size: 13px; font-weight: 600; }
-.manager-workspace .field-link { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); text-decoration: none; }
+.manager-workspace .field-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); text-decoration: none; }
 .manager-workspace .field-link:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 .manager-workspace .field-link svg { width: 13px; height: 13px; }
 .manager-workspace .checkbox-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .manager-workspace .legend-row { display: inline-flex; align-items: center; gap: 8px; }
 .manager-workspace .field-input {
   width: 100%; min-width: 0; padding: 11px 12px; font: inherit; font-size: 13px;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink);
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--paper); color: var(--ink);
+  transition: border-color var(--motion-base) var(--ease-feedback), box-shadow var(--motion-base) var(--ease-feedback);
 }
 .manager-workspace .field-input:hover:not(:disabled) { border-color: color-mix(in srgb, var(--muted) 45%, var(--line)); }
 .manager-workspace .field-input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 .manager-workspace .field-input:disabled { cursor: not-allowed; }
-.manager-workspace .field-help { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.75; max-width: 62ch; }
+.manager-workspace .field-help { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.75; max-width: 62ch; }
 .manager-workspace .field-help a { text-decoration: underline; text-underline-offset: 3px; }
-.manager-workspace .checkbox-row { display: inline-flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.manager-workspace .checkbox-row { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; }
 .manager-workspace .checkbox-row input { accent-color: var(--accent); width: 15px; height: 15px; }
 
 /* Action rows keep buttons and their status on one baseline. */
@@ -168,23 +167,23 @@
 /* Status text: quiet, single line, never shouts. */
 .manager-workspace .inline-status { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 12px; }
 .manager-workspace .inline-status svg { width: 14px; height: 14px; }
-.manager-workspace .inline-error { margin: 0; color: var(--error); font-size: 12.5px; line-height: 1.7; }
+.manager-workspace .inline-error { margin: 0; color: var(--error); font-size: 13px; line-height: 1.7; }
 
 /* Connection state. */
 .manager-workspace .state-badge {
-  display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px; border-radius: 4px;
+  display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px; border-radius: var(--radius-xs);
   border: 1px solid var(--line); background: var(--ground); color: var(--muted); font-size: 11px;
 }
 .manager-workspace .state-badge.live { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); color: var(--ink); }
 .manager-workspace .state-badge.live i { background: var(--accent); }
-.manager-workspace .state-badge i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.manager-workspace .state-badge i { width: 6px; height: 6px; border-radius: var(--radius-pill); background: var(--muted); }
 .manager-workspace .state-badge.warn { border-color: color-mix(in srgb, var(--error) 35%, var(--line)); color: var(--error); }
 .manager-workspace .state-badge.warn i { background: var(--error); }
 
 /* Git: two labelled cards — connect a new account, then manage the existing ones. */
 .manager-workspace .git-settings { display: grid; gap: 26px; }
 .manager-workspace .settings-card {
-  display: grid; gap: 20px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper);
+  display: grid; gap: 20px; padding: 22px 24px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--paper);
 }
 .manager-workspace .card-head h3 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
 .manager-workspace .card-head > p { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.75; max-width: 64ch; }
@@ -192,20 +191,20 @@
 .manager-workspace .card-title-row h3 { margin: 0; }
 .manager-workspace .count-chip {
   display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 7px;
-  border-radius: 999px; background: var(--soft); color: var(--ink); font-size: 11px; font-variant-numeric: tabular-nums;
+  border-radius: var(--radius-pill); background: var(--soft); color: var(--ink); font-size: 11px; font-variant-numeric: tabular-nums;
 }
 .manager-workspace .settings-subtabs .tab-count { margin-left: 4px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .manager-workspace .settings-subtabs button[aria-selected="true"] .tab-count { color: var(--accent); }
 .manager-workspace .settings-card .field + .field { margin-top: 18px; }
 .manager-workspace .settings-card .settings-actions { margin-top: 20px; }
 .manager-workspace .account-list { display: grid; gap: 16px; }
-.manager-workspace .account { padding: 18px 20px; border: 1px solid var(--line); border-radius: 9px; background: var(--ground); }
+.manager-workspace .account { padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--ground); }
 .manager-workspace .account-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .manager-workspace .account-head h3 { margin: 0 4px 0 0; font-size: 16px; font-weight: 600; letter-spacing: -.02em; }
 .manager-workspace .account-avatar {
-  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px;
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: var(--radius-md);
   border: 1px solid var(--line); background: var(--paper); color: var(--muted);
-  font-family: var(--display); font-size: 15px;
+  font-family: var(--display); font-size: 14px;
 }
 .manager-workspace .account-facts {
   display: grid; grid-template-columns: repeat(2, max-content); justify-content: start;
@@ -230,7 +229,7 @@
 .manager-workspace .sync-progress { margin-top: 20px; }
 .manager-workspace .sync-stages { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
 .manager-workspace .sync-stages li {
-  display: inline-flex; align-items: center; gap: 7px; padding: 5px 9px; border-radius: 4px;
+  display: inline-flex; align-items: center; gap: 7px; padding: 5px 9px; border-radius: var(--radius-xs);
   border: 1px solid var(--line); color: var(--muted); font-size: 11px;
 }
 .manager-workspace .sync-stages li.current { border-color: var(--accent); background: var(--soft); color: var(--ink); font-weight: 600; }
@@ -245,8 +244,8 @@
 .manager-workspace .button.danger.confirming:hover:not(:disabled) { background: color-mix(in srgb, var(--error) 88%, var(--ink)); }
 
 /* Model directory list, shown only once a real answer arrived. */
-.manager-workspace .model-list { margin: 14px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; max-height: 190px; overflow-y: auto; }
-.manager-workspace .model-list li { padding: 5px 9px; border: 1px solid var(--line); border-radius: 4px; background: var(--ground); color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.manager-workspace .model-list { margin: 14px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; max-height: 190px; overflow-y: auto; overscroll-behavior: contain; }
+.manager-workspace .model-list li { padding: 5px 9px; border: 1px solid var(--line); border-radius: var(--radius-xs); background: var(--ground); color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
 .manager-workspace .model-list li.chosen { border-color: var(--accent); background: var(--soft); color: var(--ink); font-weight: 600; }
 .manager-workspace .model-choice { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .manager-workspace .model-choice:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -258,20 +257,20 @@
 .manager-workspace .boundary-column h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13px; font-weight: 600; }
 .manager-workspace .boundary-column h3 svg { width: 15px; height: 15px; color: var(--muted); }
 .manager-workspace .boundary-column ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
-.manager-workspace .boundary-column li { color: var(--muted); font-size: 12.5px; line-height: 1.75; }
+.manager-workspace .boundary-column li { color: var(--muted); font-size: 13px; line-height: 1.75; }
 .manager-workspace .boundary-note { margin: 0; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.75; }
 
 /* Loading skeleton: same shape as the loaded page, no spinner. */
 .manager-workspace .settings-skeleton { display: grid; gap: 26px; max-width: 880px; }
 .manager-workspace .settings-skeleton span {
-  display: block; height: 14px; border-radius: 4px;
+  display: block; height: 14px; border-radius: var(--radius-xs);
   background: linear-gradient(90deg, var(--ground) 0%, var(--soft) 50%, var(--ground) 100%);
   background-size: 220% 100%; animation: settings-shimmer 1.6s ease-in-out infinite;
 }
-.manager-workspace .settings-skeleton .skeleton-tabs { width: 48%; height: 42px; border-radius: 6px; }
+.manager-workspace .settings-skeleton .skeleton-tabs { width: 48%; height: 42px; border-radius: var(--radius-sm); }
 .manager-workspace .settings-skeleton .skeleton-title { width: 30%; height: 26px; }
 .manager-workspace .settings-skeleton .skeleton-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.manager-workspace .settings-skeleton .skeleton-cards span { height: 168px; border-radius: 9px; }
+.manager-workspace .settings-skeleton .skeleton-cards span { height: 168px; border-radius: var(--radius-md); }
 .manager-workspace .settings-skeleton .skeleton-line { width: 62%; }
 @keyframes settings-shimmer { from { background-position: 120% 0; } to { background-position: -20% 0; } }
 
@@ -294,7 +293,7 @@
   .manager-workspace .settings-tabs::-webkit-scrollbar { display: none; }
   .manager-workspace .settings-tabs button { padding: 11px 12px 12px; white-space: nowrap; }
   .manager-workspace .settings-panel { gap: 24px; }
-  .manager-workspace .settings-panel-head h2 { font-size: 21px; }
+  .manager-workspace .settings-panel-head h2 { font-size: 20px; }
   .manager-workspace .settings-panel-body { gap: 26px; }
   .manager-workspace .mode-segments { width: 100%; }
   .manager-workspace .mode-segment { padding-inline: 8px; gap: 6px; }
@@ -306,7 +305,7 @@
 .manager-workspace .prompt-input { min-height: 120px; resize: vertical; font-family: inherit; font-size: 13px; line-height: 1.75; }
 .manager-workspace .contract-details {
   margin-top: 20px; padding: 14px 18px;
-  border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--paper);
 }
 .manager-workspace .contract-details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 .manager-workspace .contract-details summary:hover { color: var(--ink); }

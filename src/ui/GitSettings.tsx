@@ -77,14 +77,14 @@ function ProviderPanel({ git, provider }: { git: GitController; provider: GitPro
       <section className="settings-card" aria-labelledby={'git-connect-' + provider}>
         <header className="card-head">
           <h3 id={'git-connect-' + provider}>添加账号</h3>
-          <p>每次验证成功都会新增一个独立账号；同一个平台可以连接多个账号，各自保存凭证、同步规则与本地快照。</p>
+          <p>同一平台可以连接多个账号，各自保存凭证、同步规则与本地快照。</p>
         </header>
         <form className="settings-form" onSubmit={event => { event.preventDefault(); submit(); }}>
           <div className="field">
             <div className="field-head">
               <span className="field-label">
                 <label htmlFor={provider + '-access-token'}>{config.tokenLabel}</label>
-                <InfoTip label="连接说明">{config.hint}令牌不会回填到输入框，也不会写入项目文件。</InfoTip>
+                <InfoTip label="连接说明">{config.hint}凭证不会回填到输入框，也不会写入项目文件。</InfoTip>
               </span>
               <a className="field-link" href={config.tokenUrl} target="_blank" rel="noopener noreferrer">{config.tokenLink}<WorkspaceIcon name="external" /></a>
             </div>
@@ -97,9 +97,9 @@ function ProviderPanel({ git, provider }: { git: GitController; provider: GitPro
               <label className="checkbox-row" htmlFor={provider + '-remember'}>
                 <input id={provider + '-remember'} type="checkbox" checked={remember} disabled={busy}
                   onChange={event => setRemember(event.target.checked)} />
-                在此设备记住令牌
+                在此设备记住凭证
               </label>
-              <InfoTip label="凭证存储说明">勾选后写入本地存储，它不是加密保险箱；不勾选则只在当前浏览器会话有效。令牌只发往 {provider === 'github' ? 'api.github.com' : 'gitee.com'}，不会回填到输入框。</InfoTip>
+              <InfoTip label="凭证存储说明">勾选后写入本地存储，它不是加密保险箱；不勾选则只在当前浏览器会话有效。凭证只发往 {provider === 'github' ? 'api.github.com' : 'gitee.com'}，不会回填到输入框。</InfoTip>
             </div>
           </div>
           <div className="action-row settings-actions">
@@ -111,10 +111,10 @@ function ProviderPanel({ git, provider }: { git: GitController; provider: GitPro
       <section className="settings-card" aria-labelledby={'git-accounts-' + provider}>
         <header className="card-head">
           <div className="card-title-row"><h3 id={'git-accounts-' + provider}>已连接账号</h3><span className="count-chip">{accounts.length}</span></div>
-          <p>逐个账号同步：一次只推进一个账号的一页数据，读取完成前始终显示原快照；在收藏页左下角切换当前工作账号。</p>
+          <p>读取完成前始终显示原快照；当前工作账号在收藏页左下角切换。</p>
         </header>
         {loading && <p className="inline-status" role="status">正在读取 {config.label} 连接状态…</p>}
-        {state && !accounts.length && !loading && <p className="inline-status">还没有连接 {config.label} 账号。填写上方令牌即可添加。</p>}
+        {state && !accounts.length && !loading && <p className="inline-status">还没有连接 {config.label} 账号。填写上方凭证即可添加。</p>}
         <div className="account-list">
           {accounts.map(item => <article className="account" key={item.account.accountId}>
             <div className="account-head">

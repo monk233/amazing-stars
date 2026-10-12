@@ -2,7 +2,7 @@ import { gitMessage, type GitMessage, type GitState } from './git/types';
 import type { Library } from './library/library';
 import { isAiInput, type AiInput, type AiState } from './ai/config';
 import type { ClassifyState } from './ai/classify';
-import { isPromptText, isTimeout, type AiPrompt, type ClassifyConfig } from './ai/prompt';
+import { isPromptText, isTimeout, type AiPrompt, type ClassifyConfig } from './ai/preferences';
 import { isBatchSize } from './ai/classification';
 import { isAppearance } from './data/settings';
 import type { Appearance, Settings } from './data/types';
