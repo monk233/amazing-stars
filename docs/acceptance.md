@@ -148,3 +148,157 @@ Impeccable 机械检查因缺少 HTML/CSS 解析模块而降级为正则扫描�
 - 修复：构造时保存 `(input, init) => fetch(input, init)` 包装，无接收者调用；GitHub/Gitee client 原本就 `const fetcher = this.fetcher; fetcher(...)`，无需改动。
 - 新增回归测试：替换全局 fetch 记录调用接收者，断言不是服务实例。
 - `pnpm test` 14 个文件、168 项通过；`pnpm typecheck`、`pnpm build` 通过；构建产物含包装调用。
+
+## 2026-10-12：本机环境实测与真实 Chrome 加载
+
+本轮只做验证与文档一致性修正，未改动运行时代码。环境：Windows，Chrome 154.0.8037.98，pnpm 12.5.1。
+
+工程命令：
+
+- `pnpm install --frozen-lockfile`：新工作区安装成功，156 个包，`postinstall` 的 `wxt prepare` 通过。本机 pnpm 的版本管理器在 Windows 上调用自身缓存副本时路径解析失败（`bin\..\node_modules\pnpm\pnpm` 无法被 cmd 执行），改用 store 内同版本的 `pnpm/bin/pnpm.mjs` 直接运行；安装结果与三条命令的结论不受影响。
+- `pnpm typecheck`：通过。
+- `pnpm test`：14 个文件、168 项通过，与 2026-10-11 记录一致。
+- `pnpm build`：通过，产物 `.output/chrome-mv3`，列出的文件合计 498.75 kB（未压缩，不等于商店安装包大小）。
+
+真实 Chrome 加载：
+
+`--load-extension` 在 Chrome 154 已失效。带 `--disable-features=DisableLoadExtensionCommandLineSwitch` 启动后，profile 的 `Secure Preferences` 中没有任何本扩展记录，CDP target 列表也没有对应 service worker。改用 DevTools Protocol 的 `Extensions.loadUnpacked` 加载 `.output/chrome-mv3`，返回扩展 ID `fcceakjmniakgpbjhhdfohopmkljihbg`。
+
+- Service Worker：CDP target 出现 `chrome-extension://<id>/background.js`，此前记录中“自动化脚本读取不到 background service worker target”的阻塞解除。
+- 管理页渲染：`manager.html` 标题为「Amazing Stars · 收藏管理」，`h1` 为「所有收藏」，分类区、筛选区、空态与设置入口均存在；无 console error，无未捕获异常。
+- 只读 IPC：`GET_STATUS`、`AI_READ`、`LIBRARY_READ` 返回预期结构（数据库 ready、AI 未配置、收藏为空）。
+- 消息边界：`AI_MODELS` 带额外字段被后台拒绝并返回「消息来源或内容不受信任。」；`SET_APPEARANCE` 传入字符串被拒，按接口要求传 `{ theme, mode }` 后写入成功且可读回。
+
+拖拽与本地写入：
+
+临时 profile 中写入一条本地种子记录（1 个账号、1 个仓库、1 个手动分类），随后在页面内派发真实的 `dragstart` / `dragover` / `drop` 事件序列，把项目行拖到分类行。
+
+- 拖拽前分类计数 0，拖拽后为 1，未分类计数归零，项目行出现「验证分类」标记。
+- `LIBRARY_READ` 返回归属记录 `local:seed-category:seed-repo-1`，`source` 为 `manual`，与 `moveRepository` 的写入约定一致，说明 `GIT_CATEGORY_MOVE` 经真实后台与真实 IndexedDB 完成。
+
+边界：
+
+- 种子记录只写入 `artifacts/chrome-profile` 这个临时 profile（该目录被 Git 忽略），源码与构建产物不含演示数据。
+- 仍未使用真实 GitHub / Gitee 令牌：真实分页规模、私有资源可见范围、组织策略、限流退避与真实远端写入均未验收。
+- 拖拽使用合成 `DragEvent` 与 `DataTransfer`，不是操作系统级鼠标拖拽；指针捕获、拖拽影像与触摸路径仍未验证。
+- 验证脚本位于 `artifacts/chrome-check/`，不进入版本库。
+
+## 2026-10-12：AI 分类与提示词
+
+本轮实现经用户确认的 AI 分类功能：按未分类收藏生成分类建议，用户逐项确认后写入本地分类；系统提示词的分类准则部分与用户提示词可编辑，输出契约与安全约束固定在代码中。设计与计划见 `docs/superpowers/specs/2026-10-12-ai-classification-design.md` 与同名 plans 文档。
+
+新增 `src/ai/prompt.ts`、`src/ai/classification.ts`、`src/ai/classify.ts`、`src/library/apply-suggestions.ts`、`src/ui/use-ai.ts`、`src/ui/PromptSettings.tsx`、`src/ui/ClassifyView.tsx`；`LocalDatabase` 增加按主键删除单条记录的方法，用于清理草稿。未新增运行时依赖、未新增扩展权限、未升级 IndexedDB 版本。
+
+验证方式：单元与集成测试使用模拟 HTTP 与 fake-indexeddb；界面使用 `react-dom/server` 渲染断言；真实环境使用本机 Chrome 154 经 DevTools Protocol 加载 `.output/chrome-mv3`，数据为临时 profile 中的本地种子记录。
+
+- `pnpm typecheck`：通过。
+- `pnpm test`：18 个文件、208 项通过。
+- `pnpm build`：通过，列出的文件合计 541.78 kB（未压缩）。
+- 真实 Chrome：service worker target 正常注册；管理页渲染出「AI 整理未分类」入口；0 console error、0 未捕获异常。
+- 提示词：`AI_PROMPT_READ` 返回的当前值与默认值一致；保存「只按用途分类 / 分类名用中文」后原样读回并写入本地存储。
+- 草稿：两个未分类项目中私有项目被跳过（队列只含公开项目，`skippedPrivate` 为 1），候选总数含私有项目（2）。
+- 失败路径：未配置 AI 服务时单批请求失败被记录为「第 1 批」并保留原因，游标不推进、建议不写入；`结束并预览` 后草稿转为 `needs_review`。
+- 写入：未知项目 ID 被拒绝并返回具体原因（修复了先前退回通用文案的行为）；确认后 `applied` 为 1、`categoriesCreated` 为 1，分类与归属写入真实 IndexedDB，草稿记录被删除；重新加载后分类列表出现新分类，未分类计数相应减少。
+- 视口检查：整理视图在 1440×900、1366×768、390×844 三个尺寸与 folio-light、observatory-dark 两套主题下均无横向溢出，「写入 N 个项目」按钮都在视口内；收藏页的入口按钮与提示词面板的保存按钮同样可见可点。截图用于本地核对，不进入版本库。
+- 界面加载：进入整理视图时会主动读取当前账号的草稿并渲染两栏建议；该缺陷在首轮视口检查中发现并修复。
+
+未执行或未验证：
+
+- 没有发出真实模型请求。可选主机权限需要用户在浏览器里确认，自动化无法代替；从模型返回到建议落地的环节由测试中的模拟响应与直接注入的草稿覆盖。
+- 未使用真实 AI 服务的 Base URL、API Key 与模型名；供应商兼容性、费用与限流行为未验证。
+- 未通过鼠标与键盘手动完成一次完整整理（脚本走的是真实 IPC 与真实 IndexedDB，不是真实指针操作）。
+- 「整理过程中用户自行移动项目」的冲突路径只有单元测试覆盖。
+
+## 2026-10-12（续）：生成请求 400 的定位能力与自定义请求头
+
+现象：在真实 AI 服务（OpenCode Zen）上整理收藏时报「生成请求失败（HTTP 400）。请检查服务状态。」，且看不到任何原因。
+
+调查发现两点：
+
+1. 扩展自己有缺陷：生成请求的错误分支执行 `response.body.cancel()`，把服务端返回的说明丢掉了，所以界面只能给通用文案。
+2. 服务端实际原因是缺少请求头：`Request is missing x-opencode-session and cannot be routed efficiently.` 该服务要求除 `Authorization` 之外的额外会话头，而扩展此前只发送固定的三个头。
+
+修复与新增：
+
+- 生成请求被拒时会读取服务端说明：只取 `error` / `message` / `detail` 字段，去掉控制字符、截断 300 字符，内容含 API Key 时整体丢弃；无法解析（例如 HTML 错误页）时退回通用提示。400/422 的提示改为明确指向模型名或请求参数。
+- AI 服务配置新增「自定义请求头」：每行一个「名称: 值」，同时作用于模型目录与生成请求；头名须为合法 token，值限可见 ASCII 且不能换行，最多 20 行、2000 字符；`Authorization`、`Content-Type`、`Accept`、`Host`、`Cookie`、`Origin`、`Referer`、`User-Agent`、`Content-Length`、`Connection`、`Transfer-Encoding` 由扩展管理，写入会被拒绝并说明原因。旧配置缺少该字段时按空处理，不需要迁移。
+- 自定义头按普通配置随 Base URL 与模型名保存在 `chrome.storage.local`，界面写明不适合存放长期凭证。
+
+验证：
+
+- `pnpm typecheck`：通过。`pnpm test`：18 个文件、218 项通过。`pnpm build`：通过，产物合计 544.58 kB。
+- 服务端错误说明的呈现、Key 不回显、控制字符清理、超长截断、HTML 错误页、自定义头进入模型目录与生成请求、受保护头与非法格式被拒、旧配置兼容，均有测试覆盖；其中自定义头在真实本机 HTTP 服务上确认已被发出。
+- 未执行：没有在真实 OpenCode Zen 上复测修复后的完整整理流程，真实服务的会话头取值与有效期未验证。
+
+## 2026-10-12（续）：批次失败后的状态与生成超时
+
+现象：在真实服务上首批请求超时（60 秒），并且失败后界面仍显示「正在请求模型」，需要手动点取消才有反应。
+
+调查结论：
+
+1. 状态机设计错了。单批失败时草稿保持 `running`，服务端没有表达「这一轮已经停下来」，界面据此继续显示正在请求，用户无法判断任务是否结束。
+2. 60 秒超时是没有实测依据的初始取值，首批 30 个项目的生成在该服务上 60 秒内没有返回。
+
+修复：
+
+- 单批请求失败时草稿立即转入 `needs_review`，界面显示「已停止，已处理 X / 共 Y」，并给出「重试本批」「结束并预览」「放弃本次整理」；失败批次不推进游标，重试即重新请求同一批。
+- `step` 允许在 `needs_review` 且仍有未处理项目时继续推进，重试不需要额外命令；页面重新打开后停在半途的草稿同样可以继续。
+- 生成请求超时从 60 秒放宽到 120 秒，错误文案改为说明服务端可能仍在处理、可重试本批或改用更快的模型。
+- 界面不再把「草稿处于 running」当作「正在请求」：区分客户端是否真的在发请求，避免关页重开后显示假进度。
+
+验证：`pnpm typecheck` 通过；`pnpm test` 18 个文件、220 项通过；`pnpm build` 通过，产物合计 545.29 kB。失败后状态、失败记录与游标、重试推进、结束预览保留失败记录、120 秒超时，均有测试覆盖。未在真实服务上复测 120 秒是否足够。
+
+## 2026-10-12（续）：移除预览、整理配置与模态框入口
+
+按用户要求调整 AI 整理的交互与配置：
+
+- 移除预览确认环节：每批建议通过校验后直接写入本地分类，不再有「建议采纳 / 需要你确认」两栏与逐条勾选；写入发生在 `AI_CLASSIFY_STEP` 内部，`AI_CLASSIFY_APPLY` 命令被删除。
+- 新增「AI 服务 → 整理配置」子标签：请求超时（15–600 秒，默认 120）与私有仓库开关从整理界面移到这里；存储键升级为 `ai:classify:v2`，读取时兼容旧的 `ai:classify:v1`。
+- 收藏页入口改名 `AI 整理`，点击原地打开大号模态框（宽度上限 920px、高度上限 80vh），不再切换 `#classify` 路由；`ClassifyView.tsx` 删除，新增 `ClassifyDialog.tsx` 与 `ClassifyConfig.tsx`。
+- 失败语义与上一轮一致：单批失败即停止本轮、不推进游标，界面显示「已停止」并提供「重试本批」；因为改为每批直接写入，中断不会回滚已经写入的分类。
+- `docs/design/ui-spec.md` §4.7 的对话框尺寸上限改为两档（确认类 520px、内容类 920px / 80vh），几十条结果与进度信息装不进原来的 520px。
+
+验证：`pnpm typecheck` 通过；`pnpm test` 18 个文件、225 项通过；`pnpm build` 通过，产物合计 546.72 kB。真实 Chrome 中确认：点击入口不改变 `#library` 路由、模态框居中显示、`Esc` 关闭、AI 服务下存在三个子标签、超时输入默认 120 且 min/max 为 15/600、整理窗口内不再出现私有开关；1440×900、1366×768、390×844 三个尺寸与 folio-light、observatory-dark 两套主题下均无横向溢出、主要操作可见。
+
+首轮检查发现一个问题：整理窗口因为渲染在 `.manager-workspace` 之外，`.dialog-backdrop` 的 `position: fixed` 没有匹配到，模态框落进文档流底部。修正后第二轮确认居中。这个问题服务端渲染测试看不出来，只有真实浏览器能暴露。
+
+未执行：仍未在真实 AI 服务上跑通完整整理流程。直接写入意味着建议未经人工确认即落库，这是本次需求的明确取舍。
+
+## 2026-10-12（续）：整理入口改为按钮进度与提示条
+
+按用户要求取消整理窗口，把反馈直接放在触发按钮与右下角提示条上：
+
+- 点击 `AI 整理` 不再打开任何对话框，也不改变路由（仍是 `#library`）；按钮在运行期间显示 `整理中 X / Y` 与旋转图标并进入禁用态。
+- 结果反馈改为提示条：成功给出「已整理 N 个项目，新建 M 个分类。」（`role="status"`，4 秒），失败给出「整理中断：<原因>。已经处理的 N 个项目保留在本地。」（`role="alert"`，6 秒），都可手动关闭，最多同时三条。
+- 取消中断功能：没有停止、重试、放弃入口，也没有 `AI_CLASSIFY_FINISH` 与 `AI_CLASSIFY_CANCEL` 命令。单批失败时服务端删除草稿并抛出可读原因，队列清空时同样删除草稿并返回本轮结果；已经被分类的项目不会在下次运行中被重复处理。
+- 删除 `ClassifyDialog.tsx`，新增 `Toast.tsx` 与 `use-toasts.ts`。
+- `docs/design/ui-spec.md` 记录两处有意例外：新增 §4.10 结果提示条（含"不用 toast 掩盖长期失败"的限定例外说明），§4.1 允许按钮内部的进度图标（§12 禁止转圈的唯一例外）；层级表新增 `--z-toast`。§4.7 收回上一轮为大对话框放宽的尺寸上限。
+
+验证：`pnpm typecheck` 通过；`pnpm test` 18 个文件、224 项通过；`pnpm build` 通过，产物合计 544.55 kB。真实 Chrome 中确认：点击整理时按钮变为「整理中 0 / 0」且页面不存在 `.dialog-backdrop`；未配置 AI 时提示条以错误语义出现并显示「整理中断：请先保存 AI 服务配置。 已经处理的 0 个项目保留在本地。」；失败后按钮回到「AI 整理」、路由仍是 `#library`；AI 服务下三个子标签与整理配置的默认值（120 / 15 / 600）不变；1440×900 与 390×844 下提示条都在视口内且无横向溢出；0 console error、0 异常。
+
+未执行：仍未在真实 AI 服务上跑通完整整理；提示条的自动消失没有被自动化断言覆盖（截图与 DOM 读取在消失前完成）。
+
+## 2026-10-12（续）：整理上限、顶部横幅、未分类隐藏与自动保存
+
+按用户要求做四处调整：
+
+- 整理配置新增「一次最大整理数量」：单次运行处理的项目上限，默认 0 表示不限，范围 0–5000。建立草稿时截断队列，多出来的项目留到下次点击；候选总数仍然显示全部未分类项目。
+- 结果提示条从右下角改为顶部居中横幅（宽度 `min(720px, 100vw - 32px)`），保留成功 4 秒、失败 6 秒与手动关闭；横幅会短暂覆盖页面顶部内容，已在规范里写明它不承载必须点击的内容。
+- 侧栏「未分类」在计数为 0 且未被选中时不再渲染；正在查看该视图时保留，避免选中态突然消失。
+- 设置页改为自动保存：分类准则、用户提示词、整理配置（超时、最大数量、私有开关）、AI 的模型名与自定义请求头在停止输入 800 毫秒后自动写入，保存按钮删除。Base URL 与 API Key、Git 令牌保留「验证并保存」，因为更换地址会让旧凭证失效、凭证必须先验证才能落库。
+- 顺带修掉一个真问题：`PromptSettings` 与 `ClassifyConfig` 的读取 effect 依赖每次渲染新建的控制器对象，会反复触发读取请求；改为依赖稳定的 `useCallback` 引用。
+
+验证：`pnpm typecheck` 通过；`pnpm test` 18 个文件、226 项通过；`pnpm build` 通过，产物合计 546.56 kB。真实 Chrome 中确认：最大数量字段默认 0、上限 5000；整理配置面板内的提交按钮数量为 0；把超时改成 200 后不点任何按钮，后台配置在防抖窗口后即为 200；提示条在 1440×900 下宽 720、top 16，在 390×844 下宽 366、top 10；把所有项目归入分类后侧栏未分类行消失；0 console error、0 异常。
+
+未执行：仍未在真实 AI 服务上跑通完整整理；自动保存的防抖与提示条的自动消失只在真实浏览器中人工确认，没有自动化断言覆盖计时行为。
+
+## 2026-10-12（续）：每批整理数量
+
+更正上一节：用户所指的「最大整理数量」是**每批请求的项目数**（原先固定 30），不是单次运行的项目总量。已改名并改为可配置：
+
+- `ClassifyConfig.maxPerRun` 改为 `batchSize`，默认 30、范围 1–100；建立草稿时写入，`step` 按它切分每批。
+- 上一版实现里的「截断队列」行为已删除：一次运行仍然处理全部未分类项目，只是分批粒度可调。
+- 存储兼容：更早的 v2 记录若只有 `maxPerRun` 而没有 `batchSize`，读取时按默认 30 处理（该字段不再有含义）。
+- 设置界面字段改为「每批整理数量」，提示写明「数量越大，单次请求越慢、越容易触发超时」。
+
+验证：`pnpm typecheck` 通过；`pnpm test` 18 个文件、226 项通过；`pnpm build` 通过，产物合计 546.52 kB。真实 Chrome 中确认字段默认 30、min 1、max 100；改超时后自动保存生效（后台读到 `timeoutSeconds: 200, batchSize: 30`）；整理配置面板内提交按钮数为 0。

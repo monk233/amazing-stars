@@ -110,6 +110,8 @@
 
 ### 5.3 Chrome 权限
 
+> 历史设计（部分被取代）：本节写于 2026-10-09，当时只有 GitHub 一个 provider。实际权限声明以 `wxt.config.ts` 为准：`storage`、`https://api.github.com/*`、`https://gitee.com/*`，可选主机权限 `https://*/*`、`http://localhost/*`、`http://127.0.0.1/*`；内容脚本只匹配 `github.com`。本节关于最小权限与不静默扩权的约束仍然有效。
+
 当前已申请的权限限于 `storage` 与 `https://api.github.com/*` 主机范围。Github.com 内容脚本匹配范围仅限产品所需网站。
 
 `alarms` 属于 M5（新增 Star 检测与自动分类）和 M7（动态跟踪）引入后台定时唤醒时才增加的权限。M1/M2 的实现把同步进度保存在持久化任务中，由管理页打开时驱动分页，因此 manifest 目前不声明 `alarms`，也没有调度层。
