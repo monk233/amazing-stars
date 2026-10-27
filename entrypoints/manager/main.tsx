@@ -1,3 +1,6 @@
+import '../../src/ui/tokens.css';
+import '../../src/ui/base.css';
+import '../../src/ui/settings.css';
 import { useGit } from '../../src/ui/use-git';
 import { Library } from '../../src/ui/Library';
 import { SettingsTabs } from '../../src/ui/SettingsTabs';
@@ -5,8 +8,6 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { useFoundation } from '../../src/ui/use-foundation';
 import type { Appearance } from '../../src/data/types';
-import '../../src/ui/tokens.css';
-import '../../src/ui/settings.css';
 
 // Anything starting with #settings keeps the settings route; other hashes fall back to the library.
 const routeFromHash = () => location.hash.startsWith('#settings') ? 'settings' : 'library';
@@ -23,7 +24,7 @@ function App() {
   const appearance = status?.settings.appearance;
   const change = (patch: Partial<Appearance>) => { if (appearance) void saveAppearance({ ...appearance, ...patch }); };
   return <Library git={git} route={route} notice={<>
-    {error && <div role="alert" className="error">{error} <button className="button secondary" onClick={() => void load()}>重试</button></div>}
+    {error && <div role="alert" className="error notice-bar">{error} <button className="small-link" onClick={() => void load()}>重试</button></div>}
   </>}>
     {status ? <div className="settings-page">
       <SettingsTabs appearance={appearance} saving={saving} onChange={change} git={git} />

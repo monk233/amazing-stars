@@ -67,7 +67,7 @@ export function AiSettings() {
     <div className="settings-panel-body">
       <form className="settings-form" onSubmit={event => { event.preventDefault(); void save(); }}>
         <fieldset className="settings-fieldset" disabled={!!busy || !saved}>
-          <legend><span className="legend-row">服务配置<InfoTip label="AI 边界说明">兼容 Bearer 认证与 <code>GET /models</code>；只做配置校验与模型目录读取，不发送仓库内容，也不调用模型生成接口。</InfoTip></span></legend>
+          <legend><span className="settings-legend">服务配置<InfoTip label="AI 边界说明">兼容 Bearer 认证与 <code>GET /models</code>；只做配置校验与模型目录读取，不发送仓库内容，也不调用模型生成接口。</InfoTip></span></legend>
           <div className="field">
             <div className="field-head">
               <span className="field-label">

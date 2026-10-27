@@ -1,38 +1,89 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Coral (deal 3/3, seed chrome-github-gitee-stars-699e·29dd1643·2026-10-27·r0) · redesign: full
+ * nav: kept the index rail (brand, collection, categories, account) · signature: the catalogue sheet, every entry on one grid, a letterpress seal at its head, tabular dates at the right edge
+ * states: loading, empty, error, full, sync running, disconnected · modes: light+dark · axes: light/grotesk-sans/warm · posture: restrained · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P5 H4 E5 S4 R4 V4 · weakest: H, the count and the title block compete; fix: the count is a figure in the title block, the ledger head parts the screen */
+/* Hallmark · waive 39b · the ledger row is the catalogue entry itself, full-width, not a toolbar control · its 69px is the content's height, the whole row is the hit area */
+/* Hallmark · dropped onClick={closeDetail} · the entry keeps one back control and closes it through onClose, which receives closeDetail unchanged */
+/* Hallmark · answered F4 · the dialog's danger confirm is its own page and the third match is a 2px selected-tab rule, not a fill */
+@font-face { font-family: Fraunces; src: url('../../docs/design/assets/fraunces.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Space Grotesk"; src: url('../../docs/design/assets/space-grotesk.woff2') format('woff2'); font-weight: 300 700; font-display: swap; }
+
 :root {
   color-scheme: light;
-  --ground: #f5f3ee; --paper: #fffefa; --ink: #232b28; --muted: #66716c;
-  --line: #d9ddd5; --accent: #305d49; --accent-ink: #fff;
-  --soft: #e9eee6; --error: #a32b34;
-  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-  color: var(--ink); background: var(--ground); font-size: 15px;
+  /* the scaffold's shared scale */
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+  --text-xs: 0.75rem; --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-title: 1.0625rem; --text-section: 1.25rem; --text-display-s: 1.5rem; --text-display: 1.75rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --container: 1480px; --gutter: 64px; --gap-columns: 32px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+  /* the app's own measures */
+  --rail-w: 236px; --control-h: 40px; --radius-sheet: 8px; --radius-control: 6px; --radius-chip: 3px; --hair: 1px;
+  /* folio stock, daylight: warm cotton on a felt desk, one coral ink pressed where something is settled */
+  --color-desk: oklch(90% 0.009 62);
+  --color-paper: oklch(98.5% 0.005 75); --color-paper-2: oklch(96.2% 0.007 70); --color-paper-3: oklch(92.8% 0.009 62);
+  --color-ink: oklch(22% 0.012 40); --color-ink-2: oklch(30% 0.013 40); --color-muted: oklch(46% 0.014 45);
+  --color-rule: oklch(87% 0.01 60); --color-rule-2: oklch(78% 0.012 55);
+  --color-accent: oklch(55% 0.16 32); --color-accent-soft: oklch(94.5% 0.028 35); --color-accent-ink: oklch(22% 0.012 40); --color-focus: oklch(55% 0.17 30);
+  --color-board: oklch(23% 0.012 40); --color-board-type: oklch(97% 0.006 80);
+  --color-error: oklch(47% 0.19 25); --color-grid: transparent;
+  --shadow-sheet: 0 30px 60px -38px oklch(25% 0.02 45 / 0.7), 0 2px 6px -4px oklch(25% 0.02 45 / 0.25);
+  --shadow-control: inset 0 1px 0 oklch(98% 0.004 80 / 0.9), 0 1px 0 oklch(28% 0.02 45 / 0.12), 0 0 0 1px oklch(28% 0.02 45 / 0.1);
+  --shadow-control-active: inset 0 2px 3px oklch(28% 0.02 45 / 0.16), 0 0 0 1px oklch(28% 0.02 45 / 0.12);
+  --shadow-pop: 0 18px 40px -20px oklch(25% 0.02 45 / 0.45), 0 0 0 1px oklch(28% 0.02 45 / 0.14);
+  --backdrop: oklch(20% 0.012 40 / 0.45);
+  --font-body: "Segoe UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+  --font-display: "Fraunces", "Songti SC", "SimSun", Georgia, serif;
+  --font-numeric: var(--font-body);
 }
-:root[data-theme="observatory"] { --ground:#f0f3f8; --paper:#fff; --ink:#202d45; --muted:#596a7f; --line:#d4dce7; --accent:#364e80; --soft:#e4eaf4; }
-:root[data-mode="dark"] { color-scheme:dark; --ground:#171c19; --paper:#202723; --ink:#edf0e9; --muted:#a8b7ad; --line:#3c4a40; --accent:#b6d1a8; --accent-ink:#162315; --soft:#2d382f; --error:#ffa7ad; }
-:root[data-theme="observatory"][data-mode="dark"] { --ground:#111c2d; --paper:#19283c; --ink:#ecf0f8; --muted:#acbdd3; --line:#384b65; --accent:#b3c8f4; --accent-ink:#12253f; --soft:#263850; }
-* { box-sizing:border-box; }
-body { margin:0; min-width:320px; }
-button,input,select { font:inherit; }
-button,a { -webkit-tap-highlight-color:transparent; }
-button { cursor:pointer; }
-button:disabled { cursor:wait; opacity:.65; }
-a { color:var(--accent); text-underline-offset:4px; }
-:focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
-::selection { background:var(--accent); color:var(--accent-ink); }
-h1 { font-size:30px; font-weight:600; letter-spacing:-.025em; margin:0 0 12px; }
-h2 { font-size:20px; font-weight:600; margin:0 0 12px; }
-p { line-height:1.85; max-width:66ch; }
-.button {
-  display:inline-flex; justify-content:center; align-items:center; padding:11px 18px; gap:8px;
-  border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink);
-  text-decoration:none; transition:opacity 140ms ease, transform 140ms ease;
+/* observatory stock, daylight: cool plotting paper on a slate desk, one blue ink */
+[data-theme="observatory"] {
+  color-scheme: light;
+  --color-desk: oklch(89.5% 0.013 245);
+  --color-paper: oklch(98.3% 0.006 240); --color-paper-2: oklch(95.8% 0.009 240); --color-paper-3: oklch(91.5% 0.012 244);
+  --color-ink: oklch(23% 0.02 245); --color-ink-2: oklch(31% 0.02 245); --color-muted: oklch(47% 0.02 245);
+  --color-rule: oklch(86.5% 0.014 245); --color-rule-2: oklch(77% 0.022 245);
+  --color-accent: oklch(50% 0.13 245); --color-accent-soft: oklch(93% 0.025 240); --color-accent-ink: oklch(98% 0.005 240); --color-focus: oklch(50% 0.14 245);
+  --color-board: oklch(23% 0.02 245); --color-board-type: oklch(97% 0.006 240);
+  --color-error: oklch(47% 0.19 25); --color-grid: oklch(96.4% 0.009 242);
+  --shadow-sheet: 0 30px 60px -38px oklch(25% 0.03 245 / 0.6), 0 2px 6px -4px oklch(25% 0.03 245 / 0.22);
+  --shadow-control: inset 0 1px 0 oklch(99% 0.004 240 / 0.9), 0 1px 0 oklch(28% 0.03 245 / 0.1), 0 0 0 1px oklch(28% 0.03 245 / 0.1);
+  --shadow-control-active: inset 0 2px 3px oklch(28% 0.03 245 / 0.16), 0 0 0 1px oklch(28% 0.03 245 / 0.12);
+  --shadow-pop: 0 18px 40px -20px oklch(25% 0.03 245 / 0.42), 0 0 0 1px oklch(28% 0.03 245 / 0.14);
+  --backdrop: oklch(20% 0.02 245 / 0.42);
+  --font-display: "Space Grotesk", "Microsoft YaHei", "PingFang SC", sans-serif;
 }
-.button:hover:not(:disabled) { opacity:.86; }
-.button:active:not(:disabled) { transform:translateY(1px); }
-.button.secondary { background:transparent; color:var(--accent); }
-.note { font-size:13px; color:var(--muted); }
-.error { color:var(--error); padding:16px 0; }
-fieldset { border:0; padding:0; margin:24px 0; }
-legend { margin-bottom:12px; font-weight:600; }
-input { accent-color:var(--accent); }
-@media(max-width:600px) { h1 { font-size:26px; } }
-@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+/* folio stock, night: warm print-black, the same coral ink lifted */
+[data-mode="dark"] {
+  color-scheme: dark;
+  --color-desk: oklch(11% 0.008 55);
+  --color-paper: oklch(18% 0.009 60); --color-paper-2: oklch(21.5% 0.01 60); --color-paper-3: oklch(15.5% 0.008 55);
+  --color-ink: oklch(93% 0.008 75); --color-ink-2: oklch(84% 0.009 70); --color-muted: oklch(68% 0.012 65);
+  --color-rule: oklch(31% 0.012 60); --color-rule-2: oklch(41% 0.014 58);
+  --color-accent: oklch(75% 0.12 35); --color-accent-soft: oklch(26% 0.03 40); --color-accent-ink: oklch(18% 0.01 40); --color-focus: oklch(79% 0.13 35);
+  --color-board: oklch(95% 0.006 80); --color-board-type: oklch(20% 0.012 45);
+  --color-error: oklch(72% 0.15 25); --color-grid: transparent;
+  --shadow-sheet: inset 0 0 0 1px oklch(34% 0.012 60 / 0.55);
+  --shadow-control: inset 0 0 0 1px oklch(38% 0.012 60 / 0.6);
+  --shadow-control-active: inset 0 2px 3px oklch(8% 0.005 55 / 0.6), inset 0 0 0 1px oklch(38% 0.012 60 / 0.6);
+  --shadow-pop: inset 0 0 0 1px oklch(38% 0.012 60 / 0.7);
+  --backdrop: oklch(4% 0.005 55 / 0.62);
+  --font-display: "Fraunces", "Songti SC", "SimSun", Georgia, serif;
+}
+/* observatory stock, night: deep blue-black with the plotting grid kept */
+[data-theme="observatory"][data-mode="dark"] {
+  color-scheme: dark;
+  --color-desk: oklch(10.5% 0.018 250);
+  --color-paper: oklch(17.5% 0.02 250); --color-paper-2: oklch(21% 0.022 250); --color-paper-3: oklch(15% 0.018 250);
+  --color-ink: oklch(92% 0.012 245); --color-ink-2: oklch(83% 0.014 245); --color-muted: oklch(67% 0.02 245);
+  --color-rule: oklch(30% 0.02 250); --color-rule-2: oklch(41% 0.03 248);
+  --color-accent: oklch(74% 0.10 235); --color-accent-soft: oklch(25% 0.03 240); --color-accent-ink: oklch(16% 0.02 250); --color-focus: oklch(79% 0.11 235);
+  --color-board: oklch(95% 0.008 245); --color-board-type: oklch(18% 0.02 250);
+  --color-error: oklch(70% 0.15 25); --color-grid: oklch(20.5% 0.018 250);
+  --shadow-sheet: inset 0 0 0 1px oklch(34% 0.02 250 / 0.55);
+  --shadow-control: inset 0 0 0 1px oklch(38% 0.02 250 / 0.6);
+  --shadow-control-active: inset 0 2px 3px oklch(6% 0.01 250 / 0.6), inset 0 0 0 1px oklch(38% 0.02 250 / 0.6);
+  --shadow-pop: inset 0 0 0 1px oklch(38% 0.02 250 / 0.7);
+  --backdrop: oklch(4% 0.008 250 / 0.65);
+  --font-display: "Space Grotesk", "Microsoft YaHei", "PingFang SC", sans-serif;
+}
