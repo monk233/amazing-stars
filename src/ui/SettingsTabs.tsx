@@ -15,9 +15,10 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 /**
- * Settings index: a contents column in the sheet's margin on wide screens, one scrolling
- * line above the record on narrow ones. Only the selected panel mounts; arrow keys,
- * Home and End move between entries with a roving tabindex.
+ * Settings index: a numbered contents column in the sheet's margin on wide screens, one
+ * scrolling line above the record on narrow ones. Only the selected panel mounts; arrow keys,
+ * Home and End move between entries with a roving tabindex. The number is decorative — the
+ * accessible name stays the tab label.
  */
 export function SettingsTabs({ appearance, saving, onChange, git }: {
   appearance: Appearance | undefined;
@@ -59,7 +60,8 @@ export function SettingsTabs({ appearance, saving, onChange, git }: {
         tabIndex={tab === item.id ? 0 : -1}
         ref={node => { buttons.current[index] = node; }}
         onClick={() => setTab(item.id)} onKeyDown={event => onKeyDown(event, index)}>
-        {item.label}
+        <span className="settings-tab-num" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+        <span className="settings-tab-label">{item.label}</span>
       </button>)}
     </div>
     <div className="settings-content">

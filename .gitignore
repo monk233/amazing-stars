@@ -3,6 +3,7 @@ node_modules/
 .wxt/
 coverage/
 .impeccable/review/
+.hallmark/
 artifacts/
 *.log
 .env

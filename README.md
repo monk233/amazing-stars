@@ -86,6 +86,10 @@ pnpm preview:design
 - [AI 服务配置准备](docs/setup/ai-provider.md)
 - [当前验证记录](docs/acceptance.md)
 
+## 第三方组件与许可
+
+界面使用了 [Rare UI](https://rareui.com) 的组件（Animated Counter、Gravity Letters、Theme Selector、Fluid Orb、Matrix Orb、Grid Reveal），源码已适配到 `src/ui/rare/`，版权归 © 2026 Swami Malode。Rare UI 采用 MIT + Commons Clause + Attribution 许可：可在任何项目（含闭源商业项目）中免费使用与修改，但必须保留源码中的版权声明，并在项目说明或界面中提供指向 [rareui.com](https://rareui.com) 的可见链接；不得单独销售、再许可或再分发组件本身。
+
 ## 许可证
 
 项目代码采用 [MIT License](LICENSE)。设计预览使用的第三方字体另附其原始授权文件，位于 `docs/design/assets/`。

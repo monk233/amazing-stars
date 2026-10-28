@@ -1,0 +1,23 @@
+/* Full-viewport star layer: the "Amazing Stars" brand sky.
+   It sits above the desk and the sheet, masked to the hero band so the stars read as a sky the
+   paper is printed on — never over the ledger rows. Fixed + pointer-events:none keep it purely
+   decorative; the canvas is aria-hidden. No CSS animation: the stars are drawn per frame in JS,
+   and prefers-reduced-motion is honoured by painting a single static frame. */
+
+.star-field {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.45;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.38) 32%, transparent 56%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.38) 32%, transparent 56%);
+}
+
+/* Dark desk: lift the same canvas so the stars read sharper against the paper noise. */
+html[data-mode="dark"] .star-field {
+  opacity: 1;
+}

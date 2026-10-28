@@ -1,8 +1,9 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import type { Appearance, Theme } from '../data/types';
 import { InfoTip } from './InfoTip';
 import { ModeIcon } from './ModeIcon';
 import { WorkspaceIcon } from './WorkspaceIcon';
+import { ThemeSelector, type ThemeOption } from './rare/theme-selector';
 
 const THEMES = [
   { value: 'folio', label: '纸页收藏馆', note: '平静、有序，像自己的编辑目录。适合阅读、手册与长期整理。' },
@@ -15,13 +16,39 @@ const MODES = [
   { value: 'dark', label: '暗色' },
 ] as const;
 
-const PALETTE_VARS = ['--color-paper', '--color-rule', '--color-rule-2', '--color-accent', '--color-grid'] as const;
+const PALETTE_VARS = [
+  '--color-paper', '--color-rule', '--color-rule-2', '--color-accent', '--color-grid',
+  '--color-desk', '--color-paper-2', '--color-paper-3', '--color-ink-2',
+] as const;
 type Palette = Record<(typeof PALETTE_VARS)[number], string>;
 
+/** While the specimen palettes are being read, paint the previews with the live tokens. */
+const LIVE_TOKENS: ThemeOption['colors'] = {
+  sidebar: 'var(--color-paper-3)',
+  panel: 'var(--color-paper)',
+  border: 'var(--color-rule)',
+  strong: 'var(--color-ink-2)',
+  muted: 'var(--color-rule-2)',
+  tile: 'var(--color-paper-2)',
+};
+
+function previewColors(palette: Palette | undefined): ThemeOption['colors'] {
+  if (!palette) return LIVE_TOKENS;
+  return {
+    sidebar: palette['--color-paper-3'],
+    panel: palette['--color-paper'],
+    border: palette['--color-rule'],
+    strong: palette['--color-ink-2'],
+    muted: palette['--color-rule-2'],
+    tile: palette['--color-paper-2'],
+    accent: palette['--color-accent'],
+  };
+}
+
 /**
- * The paper specimens paint themselves with the palette they name, so the preview is
- * honest in all four stocks. Token values are read from the sheet's own theme scopes
- * rather than repeated here; the read is synchronous and restores the document first.
+ * The theme previews paint themselves with the palette they name, so the choice is honest in all
+ * four stocks. Token values are read from the sheet's own theme scopes rather than repeated here;
+ * the read is synchronous and restores the document first.
  */
 function readPalettes(): Record<string, Palette> | null {
   if (typeof document === 'undefined') return null;
@@ -47,6 +74,20 @@ function readPalettes(): Record<string, Palette> | null {
   return palettes;
 }
 
+/** 系统深浅色的实时值：跟随系统偏好变化，样本调色板不会停在首帧。 */
+function useSystemDark() {
+  const [dark, setDark] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const update = () => setDark(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  return dark;
+}
+
 export function AppearanceSettings({ appearance, saving, onChange }: {
   appearance: Appearance | undefined;
   saving: boolean;
@@ -56,19 +97,14 @@ export function AppearanceSettings({ appearance, saving, onChange }: {
   const status = saving ? '正在保存外观设置…' : appearance ? '外观设置已保存。' : '正在读取外观设置…';
   const [palettes, setPalettes] = useState<Record<string, Palette> | null>(null);
   useEffect(() => { setPalettes(readPalettes()); }, []);
-  const systemDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const systemDark = useSystemDark();
   const resolvedMode = appearance?.mode === 'dark' || (appearance?.mode !== 'light' && systemDark) ? 'dark' : 'light';
-  const sampleStyle = (theme: Theme): CSSProperties => {
-    const palette = palettes?.[theme + ':' + resolvedMode];
-    if (!palette) return {};
-    return {
-      '--sample-paper': palette['--color-paper'],
-      '--sample-line': palette['--color-rule'],
-      '--sample-rule': palette['--color-rule-2'],
-      '--sample-accent': palette['--color-accent'],
-      '--sample-grid': palette['--color-grid'],
-    } as CSSProperties;
-  };
+  const options: ThemeOption[] = THEMES.map(theme => ({
+    value: theme.value,
+    label: theme.label,
+    colors: previewColors(palettes?.[theme.value + ':' + resolvedMode]),
+  }));
+  const selected = THEMES.find(theme => theme.value === appearance?.theme);
   return <>
     <header className="settings-panel-head">
       <h2 id="settings-appearance-title">外观</h2>
@@ -77,16 +113,17 @@ export function AppearanceSettings({ appearance, saving, onChange }: {
       <div className="theme-groups">
         <fieldset className="settings-fieldset" disabled={disabled}>
           <legend><span className="settings-legend">主题<InfoTip label="外观作用范围">主题与明暗模式只影响这台设备上的显示，不修改任何远端数据。</InfoTip></span></legend>
-          <div className="theme-choices">
-            {THEMES.map(theme => <label className="theme-choice" data-preview={theme.value} key={theme.value} style={sampleStyle(theme.value)}>
-              <input type="radio" name="theme" value={theme.value}
-                checked={appearance?.theme === theme.value} onChange={() => onChange({ theme: theme.value })} />
-              <span className="theme-sample" aria-hidden="true"><i /><i /><i /><i /><i className="theme-sample-mark" /></span>
-              <span className="theme-choice-copy">
-                <span className="theme-choice-name">{theme.label}<span className="theme-check" aria-hidden="true"><WorkspaceIcon name="check" /></span></span>
-                <span className="theme-choice-note">{theme.note}</span>
-              </span>
-            </label>)}
+          <div className="theme-selector-block">
+            <ThemeSelector
+              className="grid w-full grid-cols-2 gap-[var(--space-md)]"
+              itemClassName="w-full max-w-[300px]"
+              aria-label="外观主题"
+              themes={options}
+              value={appearance?.theme ?? null}
+              onChange={value => onChange({ theme: value as Theme })}
+              disabled={disabled}
+            />
+            {selected && <p className="theme-selector-note">{selected.note}</p>}
           </div>
         </fieldset>
         <fieldset className="settings-fieldset" disabled={disabled}>

@@ -1,0 +1,46 @@
+/* Tailwind CSS v4 — utilities only.
+   The project already owns its reset and base layer (base.css), so preflight is deliberately
+   left out: importing it would undo the hand-written control, field and tag rules.
+   Unlayered project CSS still wins over these layered utilities, which keeps the Coral
+   system authoritative while new Rare UI components can use Tailwind's layout utilities. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Dark is driven by <html data-mode="dark"> (tokens.css), not the OS preference. */
+@custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
+
+/* Explicit content sources: the manager entry and the whole src tree. */
+@source "../../src";
+@source "../../entrypoints";
+
+/* Bridge the Rare UI components onto the Coral tokens instead of introducing a second palette.
+   `inline` means these are expanded into the generated utilities, never emitted as new custom
+   properties — so the self-references stay valid and tokens.css remains the only source of truth.
+   Import order is fixed on purpose: tailwind.css first, tokens.css after it (main.tsx). */
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-paper-2: var(--color-paper-2);
+  --color-paper-3: var(--color-paper-3);
+  --color-desk: var(--color-desk);
+  --color-ink: var(--color-ink);
+  --color-ink-2: var(--color-ink-2);
+  --color-muted: var(--color-muted);
+  --color-rule: var(--color-rule);
+  --color-rule-2: var(--color-rule-2);
+  --color-accent: var(--color-accent);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-accent-ink: var(--color-accent-ink);
+  --color-error: var(--color-error);
+  --color-focus: var(--color-focus);
+  --color-board: var(--color-board);
+  --color-board-type: var(--color-board-type);
+  --font-body: var(--font-body);
+  --font-display: var(--font-display);
+  --radius-sheet: var(--radius-sheet);
+  --radius-control: var(--radius-control);
+  --radius-chip: var(--radius-chip);
+  --shadow-sheet: var(--shadow-sheet);
+  --shadow-control: var(--shadow-control);
+  --shadow-pop: var(--shadow-pop);
+}

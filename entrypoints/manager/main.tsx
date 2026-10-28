@@ -1,3 +1,4 @@
+import '../../src/ui/tailwind.css';
 import '../../src/ui/tokens.css';
 import '../../src/ui/base.css';
 import '../../src/ui/settings.css';

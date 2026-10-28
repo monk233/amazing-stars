@@ -52,7 +52,8 @@ export function filterRepositories(data: Library, filters: Filters): Repository[
     return difference || a.fullName.localeCompare(b.fullName) || a.id.localeCompare(b.id);
   });
 }
-export function repositoryUrl(fullName: string): string | null {
+export function repositoryUrl(fullName: string, provider: 'github' | 'gitee' = 'github'): string | null {
+  const host = provider === 'gitee' ? 'https://gitee.com/' : 'https://github.com/';
   return /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(fullName) && !['.', '..'].includes(fullName.split('/')[1]!)
-    ? 'https://github.com/' + fullName : null;
+    ? host + fullName : null;
 }

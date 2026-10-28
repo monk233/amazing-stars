@@ -14,7 +14,7 @@ body {
 :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
 a:hover { text-decoration-color: var(--color-accent); }
-h1, h2, h3, h4 { margin: 0; font-family: var(--font-body); font-weight: 600; letter-spacing: 0; line-height: 1.28; overflow-wrap: break-word; min-width: 0; text-wrap: balance; }
+h1, h2, h3, h4 { margin: 0; font-family: var(--font-body); font-weight: 600; letter-spacing: 0; line-height: 1.28; overflow-wrap: break-word; min-width: 0; }
 h1 { font-size: var(--text-display); }
 h2 { font-size: var(--text-section); }
 h3 { font-size: var(--text-title); line-height: 1.35; }
@@ -36,7 +36,7 @@ button:disabled { cursor: not-allowed; }
   transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out), box-shadow var(--dur-micro) var(--ease-out);
 }
 .button { background: var(--color-board); color: var(--color-board-type); box-shadow: var(--shadow-control); }
-.button:hover:not(:disabled) { background: var(--color-ink-2); }
+.button:hover:not(:disabled) { background: var(--color-ink-2); box-shadow: var(--shadow-control), 0 10px 24px -12px color-mix(in oklab, var(--color-board) 55%, transparent); }
 .button:active:not(:disabled) { transform: translateY(1px); box-shadow: var(--shadow-control-active); }
 .button:disabled { opacity: 0.55; cursor: not-allowed; }
 .button.secondary, .outline-button { background: var(--color-paper-2); color: var(--color-ink); box-shadow: var(--shadow-control); border: 0; }
@@ -50,7 +50,7 @@ button:disabled { cursor: not-allowed; }
 .icon-button {
   display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border-radius: var(--radius-control);
   color: var(--color-ink-2); background: transparent;
-  transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
+  transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out);
 }
 .icon-button::before { content: ""; position: absolute; inset: -6px; }
 .icon-button { position: relative; }
@@ -70,6 +70,9 @@ button:disabled { cursor: not-allowed; }
 .inline-status { display: flex; align-items: center; gap: var(--space-xs); margin: 0; color: var(--color-muted); font-size: var(--text-sm); line-height: 1.6; }
 .inline-status .workspace-icon { width: 14px; height: 14px; color: var(--color-accent); }
 .inline-error { margin: 0; color: var(--color-error); font-size: var(--text-sm); line-height: 1.6; }
+
+/* One 180ms fade between stocks; theme.ts adds the class and removes it after the change. */
+.theme-switching *, .theme-switching *::before, .theme-switching *::after { transition: background-color 180ms var(--ease-out), border-color 180ms var(--ease-out), color 180ms var(--ease-out) !important; }
 
 /* Fields: a 1px muted edge, the ring at once, never a border-width change. */
 .field { display: grid; gap: var(--space-xs); min-width: 0; }

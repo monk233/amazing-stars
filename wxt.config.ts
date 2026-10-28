@@ -1,7 +1,10 @@
 import { defineConfig } from 'wxt';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  // Tailwind v4 runs as a Vite plugin; utilities are pulled in by src/ui/tailwind.css.
+  vite: () => ({ plugins: [tailwindcss()] }),
   manifest: {
     name: 'Amazing Stars',
     description: '更从容地浏览、分类和整理 GitHub 与 Gitee Stars。',
